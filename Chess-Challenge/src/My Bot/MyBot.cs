@@ -99,6 +99,9 @@ public class MyBot : IChessBot
         }
         else
         {
+            // todo: maximize possible moves
+            // one move rule
+
             // Material score
             foreach (PieceType type in values.Keys)
             {

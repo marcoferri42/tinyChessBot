@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 public class Node // classetta nodo custom
@@ -76,9 +77,14 @@ public class MyBot : IChessBot
 
         Node tree = new Node();
 
-        for (int i = 1; i < 4; i++) // itereative deepening TODO da studiare bene ! 
+        for (int i = 1; i < 5; i++) // itereative deepening TODO da studiare bene ! 
         {
             tree = CreateTree(board, i, new Node());
+            
+            if (t.MillisecondsElapsedThisTurn > 1000)
+            {
+                break;
+            }
         }
 
         //Console.WriteLine(board.GetLegalMoves().Count());
@@ -90,7 +96,7 @@ public class MyBot : IChessBot
 
     private (int, bool) Evaluate(Board board)
     {
-        int score = 0, nPieces = 0;
+        int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
         bool transposition = seenPositions.ContainsKey(board.ZobristKey);
 
         if (transposition)
@@ -99,34 +105,45 @@ public class MyBot : IChessBot
         }
         else
         {
-            // todo: maximize possible moves
-            // one move rule
+            // todo:
+            // maximize possible moves and minimize opponent's
+            // Array.BinarySearch!!!???!!
 
-            // Material score
+            
+            // one move rule
+            if (board.GameMoveHistory.Length > 3)
+            {
+                PieceType previousMove = board.GameMoveHistory[^3].MovePieceType;
+                PieceType lastMove = board.GameMoveHistory[^1].MovePieceType;
+
+                //Console.WriteLine(previousMove +" "+lastMove);
+                if (previousMove == lastMove)
+                {
+                    score -= 1 * turn;
+                }
+
+            }
+
+            // material score
             foreach (PieceType type in values.Keys)
             {
-                nPieces += board.GetPieceList(type, true).Count();
-                nPieces += board.GetPieceList(type, false).Count();
                 score += board.GetPieceList(type, true).Count() * values[type];
                 score -= board.GetPieceList(type, false).Count() * values[type];
             }
 
+
             // checkmate and draw score
             if (board.IsInCheckmate())
             {
-                score += 1000;
+                score += 1000 * turn;
             }
 
-            if (board.IsInStalemate() || board.IsRepeatedPosition() || board.IsFiftyMoveDraw())
+            // check check check check check mate
+            if (board.IsInCheck())
             {
-                score -= 2000;
+                score += 1 * turn;
             }
 
-            // Is in check and few pieces on the board
-            if (nPieces < 16 && board.IsInCheck())
-            {
-                score += 100;
-            }
 
             // add position to table
             seenPositions.Add(board.ZobristKey, score);
@@ -180,9 +197,16 @@ public class MyBot : IChessBot
 
         foreach (Move move in moves)
         {
+            
             board.MakeMove(move);
 
-            if (move.IsPromotion || move.IsEnPassant || board.IsInCheck() || board.IsInCheckmate()) // todo add minimization opponent moves
+            if (board.IsInCheckmate())
+            {
+                board.UndoMove(move);
+                return new Move[] { move }; ;
+            }
+
+            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture) // todo add minimization opponent moves
             {
                 Hpriority.Add(move);
             }
@@ -191,10 +215,18 @@ public class MyBot : IChessBot
                 Lpriority.Add(move);
             }
 
+            // TEMP TEST
+            Random random = new Random();
+            if (random.NextInt64() < 0.1)
+            {
+                Hpriority.Add(move);
+            }
+
+
             board.UndoMove(move);
         }
 
-        // Concatenate high-priority moves and low-priority moves
+        // concatenate high-priority moves and low-priority moves
         Move[] filteredMoves = Hpriority.Concat(Lpriority).ToArray();
 
         return filteredMoves;

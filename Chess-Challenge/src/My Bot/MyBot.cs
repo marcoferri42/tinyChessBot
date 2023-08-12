@@ -58,6 +58,17 @@ class NodeCompare : IComparer<Node> // comparatore nodes
 
 public class MyBot : IChessBot
 {
+    // Generate heat distribution decreasing from the center with a specified radius
+    static double HeatDistributionFunction(double x, double y, double maxHeat, double centerX, double centerY, double radius)
+    {
+        double distance = Math.Sqrt(Math.Pow(x - centerX, 2) + Math.Pow(y - centerY, 2));
+        if (distance <= radius)
+        {
+            return maxHeat;
+        }
+        return maxHeat / (1 + distance - radius);
+    }
+
     private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
         { PieceType.Pawn, 1 },
         { PieceType.Bishop, 3 },
@@ -66,14 +77,18 @@ public class MyBot : IChessBot
         { PieceType.King, 100 },
         { PieceType.Rook, 5 }
     };
-
+    
     public Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
 
     private int botColor = 1;
 
+    private int[,] heatGrid;
+
     public Move Think(Board board, Timer t)
     {
         botColor = board.IsWhiteToMove ? 1 : -1;
+
+        heatGrid = createHeatGrid(1.5/*max heat*/, 2.0/*max radius*/);
 
         Node tree = new Node();
 
@@ -94,22 +109,16 @@ public class MyBot : IChessBot
         return tree.Children[0].lastMove;
     }
 
-    private (int, bool) Evaluate(Board board)
+    private int Evaluate(Board board)
     {
         int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
-        bool transposition = seenPositions.ContainsKey(board.ZobristKey);
 
-        if (transposition)
+        if (seenPositions.ContainsKey(board.ZobristKey))
         {
-            return (seenPositions[board.ZobristKey], true);
+            return seenPositions[board.ZobristKey];
         }
         else
-        {
-            // todo:
-            // maximize possible moves and minimize opponent's
-            // Array.BinarySearch!!!???!!
-
-            
+        {            
             // one move rule
             if (board.GameMoveHistory.Length > 3)
             {
@@ -132,6 +141,7 @@ public class MyBot : IChessBot
             }
 
 
+
             // checkmate and draw score
             if (board.IsInCheckmate())
             {
@@ -148,7 +158,7 @@ public class MyBot : IChessBot
             // add position to table
             seenPositions.Add(board.ZobristKey, score);
 
-            return (score, false);
+            return score;
 
         }
     }
@@ -165,7 +175,8 @@ public class MyBot : IChessBot
             foreach (Move move in moves)
             {
                 board.MakeMove(move);
-                (int eval, bool isTransposition) = Evaluate(board);
+                int eval = Evaluate(board);
+
 
                 rootNode.Children.Add(
                     CreateTree(board, depth - 1, new Node(rootNode, eval, move)) // recursive call for children
@@ -206,7 +217,7 @@ public class MyBot : IChessBot
                 return new Move[] { move }; ;
             }
 
-            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture ) // todo add minimization opponent moves
+            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture )
             {
                 Hpriority.Add(move);
             }
@@ -222,6 +233,22 @@ public class MyBot : IChessBot
         Move[] filteredMoves = Hpriority.Concat(Lpriority).ToArray();
 
         return filteredMoves;
+    }
+
+    private int[,] createHeatGrid(double maxHeat, double radius)
+    {
+        int[,] heatGrid = new int[8, 8];
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                double x = i;
+                double y = j;
+                heatGrid[i, j] = (int)HeatDistributionFunction(x, y, maxHeat, 4, 4, radius);
+            }
+        }
+
+        return heatGrid;    
     }
 
 }

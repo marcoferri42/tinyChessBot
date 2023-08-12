@@ -77,7 +77,7 @@ public class MyBot : IChessBot
 
         Node tree = new Node();
 
-        for (int i = 1; i < 5; i++) // itereative deepening TODO da studiare bene ! 
+        for (int i = 1; i < 4; i++) // itereative deepening TODO da studiare bene ! 
         {
             tree = CreateTree(board, i, new Node());
             
@@ -206,7 +206,7 @@ public class MyBot : IChessBot
                 return new Move[] { move }; ;
             }
 
-            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture) // todo add minimization opponent moves
+            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture ) // todo add minimization opponent moves
             {
                 Hpriority.Add(move);
             }
@@ -214,14 +214,6 @@ public class MyBot : IChessBot
             {
                 Lpriority.Add(move);
             }
-
-            // TEMP TEST
-            Random random = new Random();
-            if (random.NextInt64() < 0.1)
-            {
-                Hpriority.Add(move);
-            }
-
 
             board.UndoMove(move);
         }

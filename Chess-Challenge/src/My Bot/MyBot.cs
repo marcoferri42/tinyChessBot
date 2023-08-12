@@ -1,15 +1,13 @@
 ﻿using ChessChallenge.API;
-using Microsoft.CodeAnalysis;
+using ChessChallenge.Application;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 
 public class Node // classetta nodo custom
 {
     public bool isRoot = false;
     public int eval { get; set; }
-    public int complexity { get; set; }
     public Node root { get; set; }
     public Move lastMove { get; set; }
 
@@ -58,52 +56,88 @@ class NodeCompare : IComparer<Node> // comparatore nodes
 
 public class MyBot : IChessBot
 {
-    // Generate heat distribution decreasing from the center with a specified radius
-    static double HeatDistributionFunction(double x, double y, double maxHeat, double centerX, double centerY, double radius)
-    {
-        double distance = Math.Sqrt(Math.Pow(x - centerX, 2) + Math.Pow(y - centerY, 2));
-        if (distance <= radius)
-        {
-            return maxHeat;
-        }
-        return maxHeat / (1 + distance - radius);
-    }
-
     private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
-        { PieceType.Pawn, 1 },
-        { PieceType.Bishop, 3 },
-        { PieceType.Knight, 3 },
-        { PieceType.Queen, 9 },
-        { PieceType.King, 100 },
-        { PieceType.Rook, 5 }
+        { PieceType.Pawn, 100 },
+        { PieceType.Bishop, 300 },
+        { PieceType.Knight, 300 },
+        { PieceType.Queen, 900 },
+        { PieceType.King, 10000 },
+        { PieceType.Rook, 500 }
     };
-    
+
+    private Dictionary<PieceType, int[,]> positional = new Dictionary<PieceType, int[,]>() {
+        {PieceType.Pawn, new int[,] { /* se nero reverse */
+            {3, 3, 3, 3, 3, 3, 3, 3},
+            {1, 1, 2, 2, 2, 2, 1, 1},
+            {0, 1, 1, 2, 2, 1, 1, 0},
+            {0, 1, 1, 2, 2, 1, 1, 0},
+            {0, 1, 1, 2, 2, 1, 1, 0},
+            {0, 1, 1, 1, 1, 1, 1, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0}}},
+
+        {PieceType.Bishop, new int[,] {
+            {1, 0, 0, 0, 0, 0, 0, 1},
+            {0, 1, 0, 0, 0, 0, 1, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 1, 0, 0, 0, 0, 1, 0},
+            {1, 0, 0, 0, 0, 0, 0, 1}}},
+
+        {PieceType.Knight, new int[,] {
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 1, 1, 0, 0, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 1, 2, 2, 1, 0, 0},
+            {0, 0, 1, 2, 2, 1, 0, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 0, 1, 1, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0}}},
+
+        {PieceType.Queen, new int[,] {
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 1, 1, 0, 0, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 1, 2, 2, 1, 0, 0},
+            {0, 0, 1, 2, 2, 1, 0, 0},
+            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 0, 1, 1, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0}}},
+
+        {PieceType.King, new int[,] {
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {1, 1, 1, 0, 0, 1, 1, 1}}},
+
+        {PieceType.Rook, new int[,] {
+            {1, 1, 1, 1, 1, 1, 1, 1},
+            {1, 1, 1, 1, 1, 1, 1, 1},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 1, 1, 0, 0, 0}}},
+    };
+
     public Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
-
-    private int botColor = 1;
-
-    private int[,] heatGrid;
 
     public Move Think(Board board, Timer t)
     {
-        botColor = board.IsWhiteToMove ? 1 : -1;
-
-        heatGrid = createHeatGrid(1.5/*max heat*/, 2.0/*max radius*/);
 
         Node tree = new Node();
 
-        for (int i = 1; i < 4; i++) // itereative deepening TODO da studiare bene ! 
+        for (int i = 1; i < 4; i++) // itereative deepening  da studiare bene ! 
         {
             tree = CreateTree(board, i, new Node());
-            
-            if (t.MillisecondsElapsedThisTurn > 1000)
-            {
-                break;
-            }
         }
-
-        //Console.WriteLine(board.GetLegalMoves().Count());
-        //Console.WriteLine(tree.Children.Count());
 
         //Console.WriteLine(tree.Children[0].eval);             <---------- evaluation print
         return tree.Children[0].lastMove;
@@ -118,40 +152,50 @@ public class MyBot : IChessBot
             return seenPositions[board.ZobristKey];
         }
         else
-        {            
-            // one move rule
+        {
+            /* ONE MOVE RULE
+
             if (board.GameMoveHistory.Length > 3)
             {
                 PieceType previousMove = board.GameMoveHistory[^3].MovePieceType;
                 PieceType lastMove = board.GameMoveHistory[^1].MovePieceType;
 
-                //Console.WriteLine(previousMove +" "+lastMove);
                 if (previousMove == lastMove)
                 {
-                    score -= 1 * turn;
+                    score -= 10 * turn;
+                }
+
+            }
+            */
+
+            foreach (PieceList list in board.GetAllPieceLists())
+            {
+                foreach (Piece piece in list)
+                {
+                    score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
+                    
+                    if (piece.IsWhite) // positional value
+                    {
+                        score += positional[piece.PieceType][piece.Square.Index % 8, piece.Square.Index / 8] * 10;
+                    }
+                    else
+                    {
+                        score -= positional[piece.PieceType][piece.Square.Index % 8, Math.Abs((piece.Square.Index / 8)-7)] * 10;
+                    }
                 }
 
             }
 
-            // material score
-            foreach (PieceType type in values.Keys)
-            {
-                score += board.GetPieceList(type, true).Count() * values[type];
-                score -= board.GetPieceList(type, false).Count() * values[type];
-            }
-
-
-
             // checkmate and draw score
             if (board.IsInCheckmate())
             {
-                score += 1000 * turn;
+                score += 100000 * turn;
             }
 
             // check check check check check mate
             if (board.IsInCheck())
             {
-                score += 1 * turn;
+                score += 50 * turn;
             }
 
 
@@ -162,7 +206,6 @@ public class MyBot : IChessBot
 
         }
     }
-
 
     private Node CreateTree(Board board, int depth, Node rootNode)
     {
@@ -208,7 +251,7 @@ public class MyBot : IChessBot
 
         foreach (Move move in moves)
         {
-            
+
             board.MakeMove(move);
 
             if (board.IsInCheckmate())
@@ -217,7 +260,7 @@ public class MyBot : IChessBot
                 return new Move[] { move }; ;
             }
 
-            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture )
+            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture)
             {
                 Hpriority.Add(move);
             }
@@ -233,22 +276,6 @@ public class MyBot : IChessBot
         Move[] filteredMoves = Hpriority.Concat(Lpriority).ToArray();
 
         return filteredMoves;
-    }
-
-    private int[,] createHeatGrid(double maxHeat, double radius)
-    {
-        int[,] heatGrid = new int[8, 8];
-        for (int i = 0; i < 8; i++)
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                double x = i;
-                double y = j;
-                heatGrid[i, j] = (int)HeatDistributionFunction(x, y, maxHeat, 4, 4, radius);
-            }
-        }
-
-        return heatGrid;    
     }
 
 }

@@ -3,6 +3,8 @@ using ChessChallenge.Application;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks.Dataflow;
 
 public class Node // classetta nodo custom
 {
@@ -67,43 +69,43 @@ public class MyBot : IChessBot
 
     private Dictionary<PieceType, int[,]> positional = new Dictionary<PieceType, int[,]>() {
         {PieceType.Pawn, new int[,] { /* se nero reverse */
-            {3, 3, 3, 3, 3, 3, 3, 3},
-            {1, 1, 2, 2, 2, 2, 1, 1},
-            {0, 1, 1, 2, 2, 1, 1, 0},
-            {0, 1, 1, 2, 2, 1, 1, 0},
-            {0, 1, 1, 2, 2, 1, 1, 0},
-            {0, 1, 1, 1, 1, 1, 1, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 1, 1, 0, 0, 0},
+            {0, 0, 1, 0, 0, 1, 0, 0},
+            {1, 1, 1, 0, 0, 1, 1, 1},
             {0, 0, 0, 0, 0, 0, 0, 0}}},
 
         {PieceType.Bishop, new int[,] {
-            {1, 0, 0, 0, 0, 0, 0, 1},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 1, 0, 0, 0, 0, 1, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 1, 0, 0, 0, 0, 1, 0},
-            {1, 0, 0, 0, 0, 0, 0, 1}}},
+            {0, 0, 0, 0, 0, 0, 0, 0}}},
 
         {PieceType.Knight, new int[,] {
             {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 1, 1, 0, 0, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
-            {0, 0, 1, 2, 2, 1, 0, 0},
-            {0, 0, 1, 2, 2, 1, 0, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 1, 0, 0, 1, 0, 0},
             {0, 0, 0, 1, 1, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0}}},
 
         {PieceType.Queen, new int[,] {
             {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 1, 1, 0, 0, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
-            {0, 0, 1, 2, 2, 1, 0, 0},
-            {0, 0, 1, 2, 2, 1, 0, 0},
-            {0, 0, 1, 1, 1, 1, 0, 0},
-            {0, 0, 0, 1, 1, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {0, 1, 1, 1, 1, 1, 1, 0},
+            {0, 0, 1, 0, 0, 1, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0}}},
 
         {PieceType.King, new int[,] {
@@ -114,11 +116,11 @@ public class MyBot : IChessBot
             {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
-            {1, 1, 1, 0, 0, 1, 1, 1}}},
+            {0, 1, 1, 0, 0, 1, 1, 0}}},
 
         {PieceType.Rook, new int[,] {
-            {1, 1, 1, 1, 1, 1, 1, 1},
-            {1, 1, 1, 1, 1, 1, 1, 1},
+            {0, 0, 0, 0, 0, 0, 0, 0},
+            {1, 0, 0, 0, 0, 0, 0, 1},
             {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
@@ -128,24 +130,29 @@ public class MyBot : IChessBot
     };
 
     public Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
+    private int totMoves, botColor;
 
     public Move Think(Board board, Timer t)
     {
+        botColor = board.IsWhiteToMove ? -1 : 1;
 
         Node tree = new Node();
 
-        for (int i = 1; i < 4; i++) // itereative deepening  da studiare bene ! 
+        for (int i = 0; i < 5; i++) // itereative deepening  da studiare bene ! 
         {
             tree = CreateTree(board, i, new Node());
+
+            Console.WriteLine("moves: " + totMoves + " depth: " + i );    // <----- totalmoves print
+            totMoves = 0;
         }
 
-        //Console.WriteLine(tree.Children[0].eval);             <---------- evaluation print
+        Console.WriteLine("eval: " + tree.Children[0].eval);             //<---------- evaluation print
         return tree.Children[0].lastMove;
     }
 
     private int Evaluate(Board board)
     {
-        int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
+        int score = 0, turn = bot ? -1 : 1;
 
         if (seenPositions.ContainsKey(board.ZobristKey))
         {
@@ -155,18 +162,19 @@ public class MyBot : IChessBot
         {
             /* ONE MOVE RULE
 
-            if (board.GameMoveHistory.Length > 3)
+            */
+            if (board.GameMoveHistory.Length > 3 && board.GameMoveHistory.Length < 30)
             {
                 PieceType previousMove = board.GameMoveHistory[^3].MovePieceType;
                 PieceType lastMove = board.GameMoveHistory[^1].MovePieceType;
 
                 if (previousMove == lastMove)
                 {
-                    score -= 10 * turn;
+                    score += 10 * turn;
                 }
 
             }
-            */
+
 
             foreach (PieceList list in board.GetAllPieceLists())
             {
@@ -174,30 +182,21 @@ public class MyBot : IChessBot
                 {
                     score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
                     
-                    if (piece.IsWhite) // positional value
+                    if (board.GameMoveHistory.Length < 10)
                     {
-                        score += positional[piece.PieceType][piece.Square.Index % 8, piece.Square.Index / 8] * 10;
-                    }
-                    else
-                    {
-                        score -= positional[piece.PieceType][piece.Square.Index % 8, Math.Abs((piece.Square.Index / 8)-7)] * 10;
+                        (int x, int y) coords = getPieceCoords(piece);
+
+                        score += positional[piece.PieceType][coords.x, coords.y]* (piece.IsWhite ? 1 : -1);
                     }
                 }
 
             }
 
-            // checkmate and draw score
-            if (board.IsInCheckmate())
-            {
-                score += 100000 * turn;
-            }
+            score -= board.IsRepeatedPosition() ? 500 *turn : 0;
 
-            // check check check check check mate
-            if (board.IsInCheck())
-            {
-                score += 50 * turn;
-            }
-
+            score += board.IsInCheckmate()  ? 100000 *turn : 0;
+            
+            score += board.IsInCheck()      ? 5 *turn : 0;
 
             // add position to table
             seenPositions.Add(board.ZobristKey, score);
@@ -208,13 +207,18 @@ public class MyBot : IChessBot
     }
 
     private Node CreateTree(Board board, int depth, Node rootNode)
-    {
+    {// TODO DIMINUISCI I RAMI DEL TREE AL LIVELLO 4 in su
+        if (totMoves > 80000){
+            return rootNode;
+        }
         if (depth > 0)
         {
             Move[] moves = board.GetLegalMoves();
 
             moves = FilterMoves(moves, board);
 
+            totMoves += moves.Length;
+            
             foreach (Move move in moves)
             {
                 board.MakeMove(move);
@@ -278,4 +282,12 @@ public class MyBot : IChessBot
         return filteredMoves;
     }
 
+
+    private (int, int) getPieceCoords(Piece piece){
+
+    return (    
+            (piece.IsWhite ? piece.Square.Index : Math.Abs(piece.Square.Index-8)) % 8, 
+            (piece.IsWhite ? piece.Square.Index : Math.Abs(piece.Square.Index-8)) / 8
+        );
+    }
 }

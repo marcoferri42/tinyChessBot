@@ -152,8 +152,8 @@ public class MyBot : IChessBot
 
     private int Evaluate(Board board)
     {
-        int score = 0, turn = bot ? -1 : 1;
-
+        int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
+        
         if (seenPositions.ContainsKey(board.ZobristKey))
         {
             return seenPositions[board.ZobristKey];
@@ -192,7 +192,7 @@ public class MyBot : IChessBot
 
             }
 
-            score -= board.IsRepeatedPosition() ? 500 *turn : 0;
+            score += board.IsRepeatedPosition() ? 500 *turn : 0;
 
             score += board.IsInCheckmate()  ? 100000 *turn : 0;
             

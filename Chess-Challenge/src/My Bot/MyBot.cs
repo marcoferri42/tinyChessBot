@@ -1,9 +1,9 @@
 ﻿using ChessChallenge.API;
-using ChessChallenge.Application;
+using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks.Dataflow;
 
 public class Node // classetta nodo custom
@@ -28,175 +28,196 @@ public class Node // classetta nodo custom
         this.lastMove = move;
         this.isRoot = false;
     }
-
-    public void Print()
-    {
-        Console.WriteLine(ToStringHelper(this, ""));
-    }
-
-    private string ToStringHelper(Node node, string indent)
-    {
-        string nodeString = $"{indent}+-- {node.eval}";
-
-        for (int i = 0; i < node.Children.Count; i++)
-        {
-            nodeString += $"\n{ToStringHelper(node.Children[i], indent + (i == node.Children.Count - 1 ? "    " : "|   "))}";
-        }
-
-        return nodeString;
-    }
 }
 
-class NodeCompare : IComparer<Node> // comparatore nodes
+class NodeCompare : IComparer<Node>
 {
-    public int Compare(Node x, Node y)
+    public int Compare(Node? x, Node? y)
     {
+        if (x == null || y == null)
+        {
+            Console.WriteLine("ERROR COMPARE NULL");
+            return 0;
+        }
+
         // Compare by the eval
         return x.eval.CompareTo(y.eval);
     }
 }
 
+
 public class MyBot : IChessBot
 {
-    private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
-        { PieceType.Pawn, 100 },
-        { PieceType.Bishop, 300 },
-        { PieceType.Knight, 300 },
-        { PieceType.Queen, 900 },
-        { PieceType.King, 10000 },
-        { PieceType.Rook, 500 }
-    };
-
     private Dictionary<PieceType, int[,]> positional = new Dictionary<PieceType, int[,]>() {
-        {PieceType.Pawn, new int[,] { /* se nero reverse */
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 1, 1, 0, 0, 0},
-            {0, 0, 1, 0, 0, 1, 0, 0},
-            {1, 1, 1, 0, 0, 1, 1, 1},
-            {0, 0, 0, 0, 0, 0, 0, 0}}},
+        {PieceType.Pawn, new int[,] {
+            {100, 100, 100, 100, 100, 100, 100, 100},
+            {50,  50,  50,  50,  50,  50,  50,  50},
+            {10,  20,  20,  30,  30,  20,  20,  10},
+            {5,   10,  10,  25,  25,  10,  10,  5},
+            {0,   0,   0,   20,  20,  0,   0,   0},
+            {5,   -10, -10, 0,   0,   -10, -10, 5},
+            {5,   10,  10,  -25, -25, 10,  10,  5},
+            {0,   0,   0,   0,   0,   0,   0,   0}}},
 
         {PieceType.Bishop, new int[,] {
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 1, 0, 0, 0, 0, 1, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 1, 0, 0, 0, 0, 1, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0}}},
-
-        {PieceType.Knight, new int[,] {
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 1, 0, 0, 1, 0, 0},
-            {0, 0, 0, 1, 1, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0}}},
-
-        {PieceType.Queen, new int[,] {
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 1, 1, 1, 1, 1, 1, 0},
-            {0, 0, 1, 0, 0, 1, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0}}},
-
-        {PieceType.King, new int[,] {
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 1, 1, 0, 0, 1, 1, 0}}},
+            {-20, -10, -10, -10, -10, -10, -10, -20},
+            {-10, 20,  0,   0,   0,   0,   20,  -10},
+            {-10, 0,   10,  10,  10,  10,  0,   -10},
+            {-10, 5,   5,   10,  10,  5,   5,   -10},
+            {-10, 0,   10,  10,  10,  10,  0,   -10},
+            {-10, 5,   5,   10,  10,  5,   5,   -10},
+            {-10, 0,   0,   0,   0,   0,   0,   -10},
+            {-20, -10, -10, -10, -10, -10, -10, -20}}},
 
         {PieceType.Rook, new int[,] {
             {0, 0, 0, 0, 0, 0, 0, 0},
-            {1, 0, 0, 0, 0, 0, 0, 1},
+            {5, 10, 10, 10, 10, 10, 10, 5},
+            {-5, 0, 0, 0, 0, 0, 0, -5},
+            {-5, 0, 0, 0, 0, 0, 0, -5},
+            {-5, 0, 0, 0, 0, 0, 0, -5},
+            {-5, 0, 0, 0, 0, 0, 0, -5},
+            {-5, 0, 0, 0, 0, 0, 0, -5},
+            {0, 0, 0, 5, 5, 0, 0, 0}}},
+
+        {PieceType.Queen, new int[,] {
+            {-20, -10, -10, -5, -5, -10, -10, -20},
+            {-10, 0, 5, 0, 0, 0, 0, -10},
+            {-10, 5, 5, 5, 5, 5, 0, -10},
+            {0, 0, 5, 5, 5, 5, 0, -5},
+            {-5, 0, 5, 5, 5, 5, 0, -5},
+            {-10, 0, 5, 5, 5, 5, 0, -10},
+            {-10, 0, 0, 0, 0, 0, 0, -10},
+            {-20, -10, -10, -5, -5, -10, -10, -20}}},
+
+        {PieceType.Knight, new int[,] {
+            {-50, -40, -30, -30, -30, -30, -40, -50},
+            {-40, -20, 0, 0, 0, 0, -20, -40},
+            {-30, 0, 10, 15, 15, 10, 0, -30},
+            {-30, 5, 15, 20, 20, 15, 5, -30},
+            {-30, 0, 15, 20, 20, 15, 0, -30},
+            {-30, 5, 10, 15, 15, 10, 5, -30},
+            {-40, -20, 0, 5, 5, 0, -20, -40},
+            {-50, -40, -30, -30, -30, -30, -40, -50}}},
+
+        {PieceType.King, new int[,] {
+            {0, 10, 10, -10, -10, 0, 10, 0},
+            {10, 10, 10, 0, 0, 10, 10, 10},
             {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 1, 1, 0, 0, 0}}},
+            {10, 10, 10, 0, 0, 10, 10, 10},
+            {0, 10, 10, -10, -10, 0, 10, 0}}}
+    };
+
+    private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
+        { PieceType.Pawn, 150 },
+        { PieceType.Bishop, 350 },  
+        { PieceType.Knight, 320 },
+        { PieceType.Queen, 950 },
+        { PieceType.King, 1000000 },
+        { PieceType.Rook, 550 }
     };
 
     public Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
-    private int totMoves, botColor;
+
+    private int totMoves = 0;
 
     public Move Think(Board board, Timer t)
     {
-        botColor = board.IsWhiteToMove ? -1 : 1;
-
         Node tree = new Node();
 
-        for (int i = 0; i < 5; i++) // itereative deepening  da studiare bene ! 
+        if (board.GameMoveHistory.Length > 0)
+            Console.WriteLine(Evaluate(board, 0));
+
+        for (int i = 1; i < 5; i++) // itereative deepening TODO da studiare bene ! 
         {
             tree = CreateTree(board, i, new Node());
 
-            Console.WriteLine("moves: " + totMoves + " depth: " + i );    // <----- totalmoves print
+            //Console.WriteLine("moves: " + totMoves + " depth: " + i);    // <----- totalmoves print
             totMoves = 0;
         }
 
-        Console.WriteLine("eval: " + tree.Children[0].eval);             //<---------- evaluation print
+        //Console.WriteLine(tree.Children[0].eval);             //<---------- evaluation print
         return tree.Children[0].lastMove;
     }
 
-    private int Evaluate(Board board)
+    private int Evaluate(Board board, int prevEval)
     {
         int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
-        
+
         if (seenPositions.ContainsKey(board.ZobristKey))
         {
             return seenPositions[board.ZobristKey];
         }
         else
         {
-            /* ONE MOVE RULE
+            // EVAL checkmate
+            if (board.IsInCheckmate()){
+                return score + 1000000 * turn;
+            }
 
-            */
-            if (board.GameMoveHistory.Length > 3 && board.GameMoveHistory.Length < 30)
+/*
+            // EVAL draw
+            if (board.IsDraw()){
+                score += Math.Sign(prevEval) > 0 ? -10 : 10;
+            }
+*/
+
+            // one move rule (piece weighted)
+            if (board.GameMoveHistory.Length > 3)
             {
-                PieceType previousMove = board.GameMoveHistory[^3].MovePieceType;
-                PieceType lastMove = board.GameMoveHistory[^1].MovePieceType;
+                // EVAL onemoverule
+                PieceType previousMove = board.GameMoveHistory[board.GameMoveHistory.Length - 3].MovePieceType;
+                PieceType lastMove = board.GameMoveHistory.Last().MovePieceType;
 
                 if (previousMove == lastMove)
                 {
-                    score += 10 * turn;
+                    score += 10 * turn ;
                 }
 
             }
 
-
+            // material and positional value
             foreach (PieceList list in board.GetAllPieceLists())
             {
                 foreach (Piece piece in list)
                 {
+                    // EVAL material
                     score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
-                    
-                    if (board.GameMoveHistory.Length < 10)
-                    {
-                        (int x, int y) coords = getPieceCoords(piece);
 
-                        score += positional[piece.PieceType][coords.x, coords.y]* (piece.IsWhite ? 1 : -1);
-                    }
+                    (int x, int y) coords = getPieceCoords(piece);
+                    
+
+                    // flippa rows se nero
+                    int [,] pos = positional[piece.PieceType];
+                    
+                    if (piece.IsWhite)
+                        Reverse2DArray(pos);
+
+                    // EVAL positional
+                    score += pos[coords.x, coords.y] * (piece.IsWhite ? 1 : -1) / 2;
+
                 }
 
             }
 
-            score += board.IsRepeatedPosition() ? 500 *turn : 0;
-
-            score += board.IsInCheckmate()  ? 100000 *turn : 0;
+/*
+            // possible moves incentive
+            int currentPlayerMoves = board.GetLegalMoves().Length;
             
-            score += board.IsInCheck()      ? 5 *turn : 0;
+            if (board.TrySkipTurn()){
+                int opponentMoves = board.GetLegalMoves().Length;
+                
+                int moveCountDifference = currentPlayerMoves - opponentMoves;
+                // EVAL POSSIBLE MOVES
+                score += (moveCountDifference * turn)/4;
+
+                board.UndoSkipTurn();
+            }
+*/
+
+
 
             // add position to table
             seenPositions.Add(board.ZobristKey, score);
@@ -206,9 +227,23 @@ public class MyBot : IChessBot
         }
     }
 
+    private (int, int) getPieceCoords(Piece piece)
+    {
+        int x = piece.Square.Index % 8;
+        int y = piece.Square.Index / 8;
+
+        if (!piece.IsWhite)
+        {
+            x = 7 - x; // Adjust for black pieces
+            y = 7 - y; // Adjust for black pieces
+        }
+
+        return (x, y);
+    }
+
     private Node CreateTree(Board board, int depth, Node rootNode)
-    {// TODO DIMINUISCI I RAMI DEL TREE AL LIVELLO 4 in su
-        if (totMoves > 80000){
+    {
+        if (totMoves > 200000){
             return rootNode;
         }
         if (depth > 0)
@@ -218,12 +253,11 @@ public class MyBot : IChessBot
             moves = FilterMoves(moves, board);
 
             totMoves += moves.Length;
-            
+
             foreach (Move move in moves)
             {
                 board.MakeMove(move);
-                int eval = Evaluate(board);
-
+                int eval = Evaluate(board, rootNode.eval);
 
                 rootNode.Children.Add(
                     CreateTree(board, depth - 1, new Node(rootNode, eval, move)) // recursive call for children
@@ -234,12 +268,13 @@ public class MyBot : IChessBot
 
             if (rootNode.Children.Count > 0)
             {
-                rootNode.Children.Sort(new NodeCompare()); // compares in ascending eval order (white best move first)
+                rootNode.Children.Sort(new NodeCompare()); // compares in ascending eval order  --> white best move first
 
-                if (board.IsWhiteToMove) // if white reverse (black best move first)
+                if (board.IsWhiteToMove) // black best move first
                 {
                     rootNode.Children.Reverse();
                 }
+
                 rootNode.eval = rootNode.Children[0].eval;
             }
 
@@ -253,10 +288,19 @@ public class MyBot : IChessBot
         List<Move> Hpriority = new List<Move>();
         List<Move> Lpriority = new List<Move>();
 
+        int nMoves = board.GameMoveHistory.Length;
+
         foreach (Move move in moves)
         {
 
             board.MakeMove(move);
+
+            if(nMoves < 4) // mosse opening ARBITRARIO A CAZZO TODO CAMBIA
+            {
+                if (move.MovePieceType == PieceType.Pawn){
+                    Hpriority.Add(move);
+                }
+            }
 
             if (board.IsInCheckmate())
             {
@@ -264,7 +308,7 @@ public class MyBot : IChessBot
                 return new Move[] { move }; ;
             }
 
-            if (move.IsPromotion || board.IsInCheck() || move.IsCastles || move.IsCapture)
+            if (move.IsPromotion || move.IsCastles || move.IsCapture)
             {
                 Hpriority.Add(move);
             }
@@ -282,12 +326,35 @@ public class MyBot : IChessBot
         return filteredMoves;
     }
 
+    // GPT :)
+    static void Reverse2DArray(int[,] array)
+    {
+        int rows = array.GetLength(0);
+        int cols = array.GetLength(1);
 
-    private (int, int) getPieceCoords(Piece piece){
-
-    return (    
-            (piece.IsWhite ? piece.Square.Index : Math.Abs(piece.Square.Index-8)) % 8, 
-            (piece.IsWhite ? piece.Square.Index : Math.Abs(piece.Square.Index-8)) / 8
-        );
+        for (int i = 0; i < rows / 2; i++)
+        {
+            for (int j = 0; j < cols; j++)
+            {
+                int temp = array[i, j];
+                array[i, j] = array[rows - i - 1, j];
+                array[rows - i - 1, j] = temp;
+            }
+        }
     }
 }
+/*
+TODO:
+
+1. Piece Move Order
+2. Clean Up EVERYTHING (varnames etc)
+
+
+
+
+
+
+
+
+
+*/

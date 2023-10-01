@@ -131,6 +131,7 @@ public class MyBot : IChessBot
         int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
         Move[] prevMoves = board.GameMoveHistory;
 
+
         if (board.IsInCheckmate()){
             return 1000000 * turn;
         }
@@ -165,7 +166,7 @@ public class MyBot : IChessBot
             // EVAL onemoverule
             if (prevMoves[^3].MovePieceType == prevMoves[^1].MovePieceType)
             {
-                score += values[prevMoves[^1].MovePieceType]/5 * (-1*turn) ;
+                score += 5 * (-1*turn) ;
             }
 
         }
@@ -177,8 +178,9 @@ public class MyBot : IChessBot
             {
                 score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
 
+/*
                 (int x, int y) coords = getPieceCoords(piece);
-
+                
                 int [,] pos = positional[piece.PieceType];
                 
                 // flippa rows se nero
@@ -190,6 +192,7 @@ public class MyBot : IChessBot
                 score += pos[coords.x, coords.y] * (piece.IsWhite ? 1 : -1);
                 
                 //Console.WriteLine(pos[coords.x, coords.y] + " , " + (piece.IsWhite ? "w":"b"));
+*/
             }
 
         }
@@ -232,20 +235,31 @@ public class MyBot : IChessBot
                 board.MakeMove(move);
                 eval = Evaluate(board, rootNode.eval);
 
-                rootNode.Children.Add(
+                rootNode.Children.Add
+                (
                     CreateTree(board, depth - 1, new Node(rootNode, eval, move)) // recursive call for children
                 );
 
                 board.UndoMove(move);
             }
 
-            if (moves.Length > 0 && rootNode.Children.Count == moves.Length)
-            {
-                rootNode.Children = SortEval(rootNode.Children, !board.IsWhiteToMove); // true -> ascending order >> black -> asc, white -> desc
-                //Console.WriteLine(rootNode.Children[0].eval + " " + board.IsWhiteToMove);
-                rootNode.eval = rootNode.Children[0].eval;
-            }
 
+            if (moves.Length > 0)
+            {
+                // true -> MAX
+                // false -> MIN
+                bool porcoddio = !board.IsWhiteToMove;
+                int minMax = porcoddio ? -1 : 1;
+
+                rootNode.Children = SortEval(rootNode.Children, porcoddio);
+                
+
+                if (rootNode.Children[0].eval * minMax > rootNode.eval){
+                    rootNode.eval = rootNode.Children[0].eval;
+                }
+                // root node eval ascension non funziona 
+            }
+            
         }
         return rootNode;
 
@@ -268,20 +282,10 @@ public class MyBot : IChessBot
                 board.UndoMove(move);
                 return new Move[] { move }; ;
             }
-
-            if (nMoves < 5) // mosse opening
-            {
-                if (move.MovePieceType == PieceType.Pawn){
-                    Hpriority.Add(move);
-                }
-            }
-
-
-            if (board.SquareIsAttackedByOpponent(move.TargetSquare)){
+            else if(board.SquareIsAttackedByOpponent(move.TargetSquare)){
                 Lpriority.Add(move);
             }
-
-            if (move.IsPromotion || move.IsCastles)
+            else if (move.IsPromotion || move.IsCastles || move.IsCapture || board.IsInCheck())
             {
                 Hpriority.Add(move);
             }

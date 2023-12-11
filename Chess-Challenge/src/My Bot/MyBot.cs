@@ -1,124 +1,92 @@
 using ChessChallenge.API;
+using ChessChallenge.Application.APIHelpers;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.IO;
+using System.Linq;
 
-public class Storage
+public class Node // classetta nodo custom
 {
-    public List<List<Board>> boards = new List<List<Board>>();
-    public List<List<int>> evals = new List<List<int>>();
+    public bool isRoot = false;
+    public int eval { get; set; }
+    public Node root { get; set; }
+    public Move move { get; set; }
 
-    public Storage() {
-        this.boards.Add(new List<Board>());
-        this.boards.Add(new List<Board>());
-        this.boards.Add(new List<Board>());
-        this.boards.Add(new List<Board>());
-        this.boards.Add(new List<Board>());
-        this.evals.Add(new List<int>());
-        this.evals.Add(new List<int>());
-        this.evals.Add(new List<int>());
-        this.evals.Add(new List<int>());
-        this.evals.Add(new List<int>());
+    public Board board { get; set; }
 
+    public List<Node> Children = new List<Node>();
+
+    public Node()
+    {
+        this.eval = 0;
+        this.isRoot = true;
+    }
+
+    public Node(Node root, int eval, Move move, Board b)
+    {
+        this.root = root;
+        this.eval = eval;
+        this.move = move;
+        this.board = b;
+        this.isRoot = false;
+    }
+
+    public List<Node> GetOrderedChildren()
+    {
+        this.Children = Children.OrderBy(child => child.eval).ToList();
+        return this.Children;
     }
 }
-
-
 public class MyBot : IChessBot
 {
-    private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() 
-    { // pieces values
-        { PieceType.Pawn, 150 },
-        { PieceType.Bishop, 350 },  
-        { PieceType.Knight, 320 },
-        { PieceType.Queen, 950 },
-        { PieceType.King, 1000000 },
-        { PieceType.Rook, 550 }
-    };
+    public int minimax;
+
+    private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
+            { PieceType.Pawn, 100 },
+            { PieceType.Bishop, 300 },
+            { PieceType.Knight, 300 },
+            { PieceType.Queen, 900 },
+            { PieceType.Rook, 500 },
+            { PieceType.King, 1000000 }
+        };
 
     public Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
 
-    public Storage moveVal = new Storage();
-    public Move Think(Board board, Timer t)
+    public Move Think(Board board, Timer timer)
     {
-        int depth = 3;
+        Node tree = new Node();
 
-        for (int i = 0; i < depth; i++)
-        {
+        CreateTree(board, 4, tree);
 
-            FindAll(board, i);
+        System.Console.WriteLine(board.GameMoveHistory.Count()/2 + " " + tree.Children[0].eval);
 
-            int minimax = board.IsWhiteToMove ? moveVal.evals[depth - 1].IndexOf(moveVal.evals[depth - 1].Max()) : moveVal.evals[depth - 1].IndexOf(moveVal.evals[depth - 1].Min());
-
-        }
-        Console.WriteLine(moveVal.evals[0].Count);
-        Console.WriteLine(moveVal.evals[1].Count);
-        Console.WriteLine(moveVal.evals[2].Count);
-
-        return 
+        return tree.Children[0].move;
     }
 
-
-
-
-
-    private void FindAll(Board b, int depth)
-    {
-        if (depth < 0) { return; }
-
-        foreach (Move mv in b.GetLegalMoves())
-        {
-            b.MakeMove(mv);
-
-            if (!seenPositions.ContainsKey(b.ZobristKey))
-            {
-                moveVal.evals[depth].Add(Evaluate(b));
-                moveVal.boards[depth].Add(b);
-
-                FindAll(b, depth - 1); //recurse
-            }
-
-            b.UndoMove(mv);
-        }
-    }
-
-    private int Evaluate(Board board)
+    public int Evaluate(Board board)
     {
         int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
-        Move[] prevMoves = board.GameMoveHistory;
 
-        // checkmate
-        if (board.IsInCheckmate()){
+        if (board.IsInCheckmate())
+        {
             return 1000000 * turn;
         }
 
-        // draw
+        if (seenPositions.ContainsKey(board.ZobristKey))
+        {
+            return seenPositions[board.ZobristKey];
+        }
+
+        if (board.IsInCheck())
+        {
+            score += 5 * turn;
+        }
+
         if (board.IsDraw())
         {
             return 0;
         }
-
-        // possible moves
-        int currentPlayerMoves = board.GetLegalMoves().Length;
-        int currentPlayerCaptures = board.GetLegalMoves(true).Length;
-
-        if (board.TrySkipTurn()){
-            int opponentMoves = board.GetLegalMoves().Length;
-            
-            score += (currentPlayerMoves > opponentMoves ? 1 : 0) * turn;  
-
-            int opponentCaptures = board.GetLegalMoves(true).Length;
-
-            score += (currentPlayerCaptures > opponentCaptures ? 1 : 0) * turn;
-
-            board.UndoSkipTurn();
-        }
-
-        // one move rule
-        if (prevMoves.Length > 2)
-        {
-            score += checkOneMoveRule(board, prevMoves) *turn;
-        }
-
 
         // material value
         foreach (PieceList list in board.GetAllPieceLists())
@@ -126,7 +94,6 @@ public class MyBot : IChessBot
             foreach (Piece piece in list)
             {
                 score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
-
             }
 
         }
@@ -137,15 +104,56 @@ public class MyBot : IChessBot
         return score;
     }
 
-    private int checkOneMoveRule(Board board, Move[] prevMoves)
+    private Node CreateTree(Board board, int depth, Node rootNode)
     {
-        if (prevMoves[^1].MovePieceType == prevMoves[^3].MovePieceType)
+        if (depth > 0)
         {
-            return 1;
+            Move[] moves = board.GetLegalMoves();
+
+            int eval = 0;
+
+            foreach (Move move in moves)
+            {
+                board.MakeMove(move);
+                eval = Evaluate(board);
+
+                rootNode.Children.Add
+                (
+                    CreateTree(board, depth - 1, new Node(rootNode, eval, move, board)) // recursive call for children
+                );
+
+                board.UndoMove(move);
+            }
+
+
+            if (rootNode.Children.Count() > 0)
+            {
+                rootNode.Children = rootNode.GetOrderedChildren(); // orders children ascending order
+                //System.Console.WriteLine(rootNode.Children[0].eval);
+                if (board.IsWhiteToMove)
+                {
+                    rootNode.Children.Reverse();
+                }
+                rootNode.eval = rootNode.Children[0].eval;
+
+                UpdateTreePath(rootNode);
+            }
         }
-        else
+        return rootNode;
+    }
+
+    private void UpdateTreePath(Node node)
+    {
+        // Assuming `eval` is a property that should be updated, and each node has a reference to its parent.
+        if (node.Children != null && node.Children.Count > 0)
         {
-            return 0;
+            node.eval = node.Children.First().eval; // Update the current node's eval with the first child's eval.
+
+            // Check if the node is not the root before making the recursive call
+            if (node.root != null)
+            {
+                UpdateTreePath(node.root); // Recursively update the parent node
+            }
         }
     }
 

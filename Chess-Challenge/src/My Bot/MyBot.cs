@@ -78,14 +78,14 @@ public class MyBot : IChessBot
             return seenPositions[board.ZobristKey];
         }
 
-        if (board.IsInCheck())
-        {
-            score += 5 * turn;
-        }
-
         if (board.IsDraw())
         {
             return 0;
+        }
+
+        if (board.IsInCheck())
+        {
+            score += 5 * turn;
         }
 
         // material value
@@ -94,8 +94,29 @@ public class MyBot : IChessBot
             foreach (Piece piece in list)
             {
                 score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
+                if (board.SquareIsAttackedByOpponent(piece.Square))
+                {
+                    score -= 5 * (piece.IsWhite ? 1 : -1);
+                }
             }
 
+        }
+
+        // possible moves
+        int opponent = board.GetLegalMoves().Count();
+        int opponentcap = board.GetLegalMoves(true).Count();
+
+        if (board.TrySkipTurn())
+        {
+            int currentmoves = board.GetLegalMoves().Count();
+            int currentcaptures = board.GetLegalMoves(true).Count();
+
+            score += (currentmoves > currentcaptures ? 1 : 0) * turn;
+            // EVAL CAPTURES
+
+            score += (currentcaptures > opponentcap ? 1 : 0) * turn;
+
+            board.UndoSkipTurn();
         }
 
         // add position to table

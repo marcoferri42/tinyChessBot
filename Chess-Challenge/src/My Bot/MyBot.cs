@@ -1,10 +1,8 @@
 using ChessChallenge.API;
-using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.IO;
 using System.Linq;
+using System.IO;
 
 public class Node // classetta nodo custom
 {
@@ -50,18 +48,24 @@ public class MyBot : IChessBot
 
         AlphaB(int.MinValue, int.MaxValue, board, 3, tree);
 
-        //Logging("responsetimelog.txt", timer.MillisecondsElapsedThisTurn+","+board.GetLegalMoves().Count()+",\n");
-        Logging("boardevaluationlog.txt", board.GetHashCode() + "," + Evaluate(board) + ",\n");
-
         System.Console.WriteLine(timer.MillisecondsElapsedThisTurn + " ms");
-
+        
         /*
+        //Logging("responsetimelog.txt", timer.MillisecondsElapsedThisTurn+","+board.GetLegalMoves().Count()+",\n");
+        //Logging("boardevaluationlog.txt", board.GetHashCode() + "," + Evaluate(board) + ",\n");
         System.Console.WriteLine(tree.child.eval);
         System.Console.WriteLine(pruned);
         */
 
         return tree.child.move;
     }
+
+
+
+
+
+
+
 
     public int Evaluate(Board board)
     {
@@ -82,7 +86,7 @@ public class MyBot : IChessBot
         {
             return 0;
         }
-        
+
         if (board.IsInCheck())
         {
             score += 50 * turn;
@@ -95,13 +99,14 @@ public class MyBot : IChessBot
         }
 
         // material value
-        Parallel.ForEach(board.GetAllPieceLists(), list =>
+        foreach (PieceList list in board.GetAllPieceLists())
         {
-            Parallel.ForEach(list, piece =>
+            foreach (Piece piece in list)
             {
                 score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
-            });
-        });
+            }
+        }
+
 
         int currentmoves = board.GetLegalMoves().Count();
         if (board.TrySkipTurn())
@@ -117,7 +122,7 @@ public class MyBot : IChessBot
             {
                 score += 100 * turn;
             }
-            
+
             // one move rule
             if (gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare)
             {
@@ -129,7 +134,7 @@ public class MyBot : IChessBot
         {
             score += -50 * turn;
         }
-            
+
         // add position to table
         seenPositions.Add(board.ZobristKey, score);
 
@@ -149,7 +154,8 @@ public class MyBot : IChessBot
         {
             Node max = new Node(rootNode, int.MinValue, new Move(), board);
 
-            Parallel.ForEach(moves, (move, state) =>
+
+            foreach (Move move in moves)
             {
                 board.MakeMove(move);
 
@@ -165,22 +171,22 @@ public class MyBot : IChessBot
                 if (beta <= alpha)
                 {
                     board.UndoMove(move);
-                    state.Break();
+                    break;
                 }
 
                 board.UndoMove(move);
-            });
+            }
 
             rootNode.child = max;
             UpdateTreePath(rootNode.child);
-            
+
             return rootNode;
         }
         else // minimizing
         {
             Node min = new Node(rootNode, int.MaxValue, new Move(), board);
 
-            Parallel.ForEach(moves, (move, state) =>
+            foreach (Move move in moves)
             {
                 board.MakeMove(move);
 
@@ -196,15 +202,15 @@ public class MyBot : IChessBot
                 if (beta <= alpha)
                 {
                     board.UndoMove(move);
-                    state.Break();
+                    break;
                 }
 
                 board.UndoMove(move);
-            });
+            }
 
             rootNode.child = min;
             UpdateTreePath(rootNode.child);
-            
+
             return rootNode;
         }
     }

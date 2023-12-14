@@ -35,7 +35,7 @@ public class MyBot : IChessBot
 
     private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
             { PieceType.Pawn, 100 },
-            { PieceType.Bishop, 320 },
+            { PieceType.Bishop, 325 },
             { PieceType.Knight, 300 },
             { PieceType.Queen, 900 },
             { PieceType.Rook, 500 },
@@ -95,14 +95,13 @@ public class MyBot : IChessBot
         }
 
         // material value
-        foreach (PieceList list in board.GetAllPieceLists())
+        Parallel.ForEach(board.GetAllPieceLists(), list =>
         {
-            foreach (Piece piece in list)
+            Parallel.ForEach(list, piece =>
             {
                 score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
-            }
-        }
-
+            });
+        });
 
         int currentmoves = board.GetLegalMoves().Count();
         if (board.TrySkipTurn())
@@ -150,8 +149,7 @@ public class MyBot : IChessBot
         {
             Node max = new Node(rootNode, int.MinValue, new Move(), board);
 
-
-            foreach (Move move in moves)
+            Parallel.ForEach(moves, (move, state) =>
             {
                 board.MakeMove(move);
 
@@ -161,17 +159,17 @@ public class MyBot : IChessBot
                 {
                     max = child;
                 }
-                
+
                 alpha = Math.Max(alpha, max.eval);
 
                 if (beta <= alpha)
                 {
                     board.UndoMove(move);
-                    break;
+                    state.Break();
                 }
 
-                board.UndoMove(move); 
-            }
+                board.UndoMove(move);
+            });
 
             rootNode.child = max;
             UpdateTreePath(rootNode.child);
@@ -181,8 +179,8 @@ public class MyBot : IChessBot
         else // minimizing
         {
             Node min = new Node(rootNode, int.MaxValue, new Move(), board);
-            
-            foreach (Move move in moves)
+
+            Parallel.ForEach(moves, (move, state) =>
             {
                 board.MakeMove(move);
 
@@ -197,12 +195,12 @@ public class MyBot : IChessBot
 
                 if (beta <= alpha)
                 {
-                    board.UndoMove(move); 
-                    break;
+                    board.UndoMove(move);
+                    state.Break();
                 }
 
-                board.UndoMove(move); 
-            }
+                board.UndoMove(move);
+            });
 
             rootNode.child = min;
             UpdateTreePath(rootNode.child);

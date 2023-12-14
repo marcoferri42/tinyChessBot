@@ -1,6 +1,7 @@
-# Octobot
+# Octobot 🐙
 
-Small bot that uses Alpha-Beta Pruning.
+A small bot using Alpha-Beta pruning and a custom evaluation function.
+
 Iterative Deepening to come.
 
 ## Current Search scatter plot:

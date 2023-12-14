@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using Microsoft.CodeAnalysis;
 
 public class Node // classetta nodo custom
 {
@@ -44,14 +45,17 @@ public class MyBot : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
+        int depth = 5;
         Node tree = new Node();
 
-        AlphaB(int.MinValue, int.MaxValue, board, 3, tree);
-
+        for (int i = 0; i < depth; i++) // iterative deepening
+        {
+            AlphaB(int.MinValue, int.MaxValue, board, i, tree);
+        }
         System.Console.WriteLine(timer.MillisecondsElapsedThisTurn + " ms");
         
+        Logging("responsetimelog5.txt", timer.MillisecondsElapsedThisTurn+","+board.GetLegalMoves().Count()+",\n");
         /*
-        //Logging("responsetimelog.txt", timer.MillisecondsElapsedThisTurn+","+board.GetLegalMoves().Count()+",\n");
         //Logging("boardevaluationlog.txt", board.GetHashCode() + "," + Evaluate(board) + ",\n");
         System.Console.WriteLine(tree.child.eval);
         System.Console.WriteLine(pruned);
@@ -59,11 +63,6 @@ public class MyBot : IChessBot
 
         return tree.child.move;
     }
-
-
-
-
-
 
 
 
@@ -158,7 +157,7 @@ public class MyBot : IChessBot
             foreach (Move move in moves)
             {
                 board.MakeMove(move);
-
+                
                 Node child = AlphaB(alpha, beta, board, depth - 1, new Node(rootNode, Evaluate(board), move, board)); // recursive call for children
 
                 if (max.eval < child.eval)
@@ -242,7 +241,9 @@ public class MyBot : IChessBot
 
     private void Logging(String filename, String log)
     {
-        File.AppendAllText("C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\logs\\" + filename, log);
+        //File.AppendAllText("C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\logs\\" + filename, log);
+        File.AppendAllText("/home/hos/Desktop/proj/tinyChessBot/Chess-Challenge/src/My Bot/Logs" + filename, log);
+
     }
 
 }

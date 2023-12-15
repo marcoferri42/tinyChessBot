@@ -29,6 +29,11 @@ public class Node // classetta nodo custom
     }
 }
 
+
+
+
+
+
 public class MyBot : IChessBot
 {
 
@@ -54,7 +59,7 @@ public class MyBot : IChessBot
         }
         System.Console.WriteLine(timer.MillisecondsElapsedThisTurn + " ms");
         
-        Logging("responsetimelog5.txt", timer.MillisecondsElapsedThisTurn+","+board.GetLegalMoves().Count()+",\n");
+        //Logging("responsetimelog5.txt", timer.MillisecondsElapsedThisTurn+","+board.GetLegalMoves().Count()+",\n");
         /*
         //Logging("boardevaluationlog.txt", board.GetHashCode() + "," + Evaluate(board) + ",\n");
         System.Console.WriteLine(tree.child.eval);
@@ -98,40 +103,27 @@ public class MyBot : IChessBot
         }
 
         // material value
-        foreach (PieceList list in board.GetAllPieceLists())
+        var allPieceLists = board.GetAllPieceLists();
+        foreach (var pieceList in allPieceLists)
         {
-            foreach (Piece piece in list)
+            foreach (var piece in pieceList)
             {
-                score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // material value
+                score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1);
             }
         }
 
-
-        int currentmoves = board.GetLegalMoves().Count();
         if (board.TrySkipTurn())
         {
+            int currentmoves = board.GetLegalMoves().Count();
             int opponentmoves = board.GetLegalMoves().Count();
             score += (currentmoves > opponentmoves) ? turn : 0; // incentivo a limitare mosse nemico
             board.UndoSkipTurn();
         }
 
-        if (gameHistory.Count() >= 3)
+        // one move rule
+        if (gameHistory.Count() >= 3 && gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare)
         {
-            if (gameHistory.Last().IsCastles) // incentivo castling
-            {
-                score += 100 * turn;
-            }
-
-            // one move rule
-            if (gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare)
-            {
-                score += -5 * turn;
-            }
-        }
-
-        if (board.GameRepetitionHistory.Count() > 1 && Math.Sign(score) == Math.Sign(turn))
-        {
-            score += -50 * turn;
+             score += -5 * turn;
         }
 
         // add position to table
@@ -241,8 +233,8 @@ public class MyBot : IChessBot
 
     private void Logging(String filename, String log)
     {
-        //File.AppendAllText("C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\" + filename, log);
-        File.AppendAllText("/home/hos/Desktop/proj/tinyChessBot/Chess-Challenge/src/My Bot/" + filename, log);
+        //File.AppendAllText("C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\" + filename, log); // finestre
+        //File.AppendAllText("/home/hos/Desktop/proj/tinyChessBot/Chess-Challenge/src/My Bot/" + filename, log);    // linux
 
     }
 

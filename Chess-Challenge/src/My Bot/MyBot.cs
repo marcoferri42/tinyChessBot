@@ -30,12 +30,42 @@ public class Node // classetta nodo custom
 }
 
 
-
-
-
-
 public class MyBot : IChessBot
 {
+    private Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)> positionalMaps = 
+        new Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)>()
+        {
+            { PieceType.Queen, 
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteQueenMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackQueenMap.txt")
+                )
+            },
+            { PieceType.Pawn,
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whitePawnMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackPawnMap.txt")
+                )
+            },
+            { PieceType.Bishop,
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteBishopMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackBishopMap.txt")
+                )
+            },
+            { PieceType.Knight,
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteKnightMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackKnightMap.txt")
+                )
+            },
+            { PieceType.Rook,
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteRookMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackRookMap.txt")
+                )
+            },
+            { PieceType.King,
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteKingMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackKingMap.txt")
+                )
+            }
+        };
 
     private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
             { PieceType.Pawn, 100 },
@@ -46,7 +76,7 @@ public class MyBot : IChessBot
             { PieceType.King, 1000000 }
         };
 
-    public Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
+    private Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
 
     public Move Think(Board board, Timer timer)
     {
@@ -57,21 +87,18 @@ public class MyBot : IChessBot
         {
             AlphaB(int.MinValue, int.MaxValue, board, i, tree);
         }
-        System.Console.WriteLine(timer.MillisecondsElapsedThisTurn + " ms");
-        
-        //Logging("responsetimelog5.txt", timer.MillisecondsElapsedThisTurn+","+board.GetLegalMoves().Count()+",\n");
+
         /*
         //Logging("boardevaluationlog.txt", board.GetHashCode() + "," + Evaluate(board) + ",\n");
         System.Console.WriteLine(tree.child.eval);
         System.Console.WriteLine(pruned);
         */
-
+        System.Console.WriteLine(timer.MillisecondsElapsedThisTurn + " ms");
         return tree.child.move;
     }
 
 
-
-    public int Evaluate(Board board)
+    private int Evaluate(Board board)
     {
         int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
         List<Move> gameHistory = board.GameMoveHistory.ToList<Move>();
@@ -102,13 +129,17 @@ public class MyBot : IChessBot
             score += 5 * turn;
         }
 
-        // material value
+        // material and positional value
         var allPieceLists = board.GetAllPieceLists();
         foreach (var pieceList in allPieceLists)
         {
             foreach (var piece in pieceList)
             {
                 score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1);
+
+                score += piece.IsWhite ? 
+                    positionalMaps[piece.PieceType].Item1[piece.Square.Name] : 
+                    positionalMaps[piece.PieceType].Item2[piece.Square.Name] ;
             }
         }
 
@@ -238,4 +269,20 @@ public class MyBot : IChessBot
 
     }
 
+    private static Dictionary<string, int> ReadMapFromFile(string fileName)
+    {
+        Dictionary<string, int> res = new Dictionary<string, int>();
+        var lines = File.ReadLines(fileName);
+        foreach (var line in lines)
+        {
+            var lineList = line.Split(':').ToList();
+            lineList.Remove(":");
+
+            if (lineList.Count() > 1)
+            { 
+                res.Add(lineList[0], int.Parse(lineList[1]));
+            }
+        }
+        return res;
+    }
 }

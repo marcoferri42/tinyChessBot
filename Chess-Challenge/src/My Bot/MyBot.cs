@@ -80,7 +80,7 @@ public class MyBot : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
-        int depth = 5;
+        int depth = 4;
         Node tree = new Node();
 
         for (int i = 0; i < depth; i++) // iterative deepening
@@ -89,7 +89,7 @@ public class MyBot : IChessBot
         }
 
         /*
-        //Logging("boardevaluationlog.txt", board.GetHashCode() + "," + Evaluate(board) + ",\n");
+        Logging("responsetimelog.txt", timer.MillisecondsElapsedThisTurn +","+ board.GetLegalMoves().Count() + "\n");
         System.Console.WriteLine(tree.child.eval);
         System.Console.WriteLine(pruned);
         */
@@ -120,7 +120,7 @@ public class MyBot : IChessBot
 
         if (board.IsInCheck())
         {
-            score += 50 * turn;
+            score += 5 * turn;
         }
 
         if (board.HasKingsideCastleRight(board.IsWhiteToMove) ||
@@ -129,17 +129,17 @@ public class MyBot : IChessBot
             score += 5 * turn;
         }
 
-        // material and positional value
+        
         var allPieceLists = board.GetAllPieceLists();
         foreach (var pieceList in allPieceLists)
         {
             foreach (var piece in pieceList)
             {
-                score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1);
+                score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // valore materiale 
 
                 score += piece.IsWhite ? 
-                    positionalMaps[piece.PieceType].Item1[piece.Square.Name] : 
-                    positionalMaps[piece.PieceType].Item2[piece.Square.Name] ;
+                    positionalMaps[piece.PieceType].Item1[piece.Square.Name] :// valore posizionale
+                    positionalMaps[piece.PieceType].Item2[piece.Square.Name];
             }
         }
 
@@ -151,11 +151,33 @@ public class MyBot : IChessBot
             board.UndoSkipTurn();
         }
 
-        // one move rule
-        if (gameHistory.Count() >= 3 && gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare)
+        if (gameHistory.Count() >= 3)
         {
-             score += -5 * turn;
+            if (gameHistory.Last().IsCastles) // incentivo castling
+            {
+                score -= 50 * turn;
+            }
+            
+            if (gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare) // one move rule
+            {
+                score -= 10 * turn;
+            }
+
+            if (board.IsRepeatedPosition() && Math.Sign(score) == Math.Sign(turn)) // no draw se stai vincendo
+            {
+                score += -60 * turn;
+            }
+
+            var lastMoveStart = gameHistory.Last().StartSquare;
+            var lastMoveTarget = gameHistory.Last().TargetSquare;
+            var king = board.GetKingSquare(!board.IsWhiteToMove);
+            if (Math.Abs(lastMoveStart.File - king.File) > Math.Abs(lastMoveTarget.File - king.File) || // incentivo se mi avvicino al re 
+                Math.Abs(lastMoveTarget.Rank - king.Rank) > Math.Abs(lastMoveStart.Rank - king.Rank))
+            {
+                score += 100 * turn;
+            }
         }
+
 
         // add position to table
         seenPositions.Add(board.ZobristKey, score);
@@ -165,7 +187,7 @@ public class MyBot : IChessBot
 
     private Node AlphaB(int alpha, int beta, Board board, int depth, Node rootNode)
     {
-        if (depth == 0 || board.IsInCheckmate())
+        if (depth == 0 || board.IsInCheckmate() || board.IsDraw())
         {
             return rootNode;
         }

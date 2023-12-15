@@ -86,14 +86,16 @@ def normalizeMap50(pieces : list[Piece]) -> list[Piece]:
     
     return pieces
 
-def writeMapstoFile(filename : str, piece : Piece):
+def writeMapstoFile(filename : str, piece : Piece, isWhite : bool):
     f = open(filename, "a")
     f.truncate(0)
     
     for square,value in piece.squares.items():
-        f.write(str(square)+ ":" + str(value) + "\n")
+        f.write(str(square) + ":" +( '' if (isWhite or value == 0)  else '-' )+ str(value) + "\n")
+        
     f.close()
-    pass
+    
+    return
 
 
 whiteMap = normalizeMap50(
@@ -101,25 +103,28 @@ whiteMap = normalizeMap50(
         getMoves(
             getRawGames('Wesley So-white.pgn'), 'white')))
 
+
+
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whitePawnMap.txt", whiteMap[0], True)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteQueenMap.txt", whiteMap[1], True)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteKnightMap.txt", whiteMap[2], True)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteKingMap.txt", whiteMap[3], True)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteBishopMap.txt", whiteMap[4], True)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteRookMap.txt", whiteMap[5], True)
+
+
 blackMap = normalizeMap50(
     countSquares(
         getMoves(
             getRawGames('Wesley So-black.pgn'), 'black')))
 
 
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whitePawnMap.txt", whiteMap[0])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteQueenMap.txt", whiteMap[1])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteKnightMap.txt", whiteMap[2])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteKingMap.txt", whiteMap[3])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteBishopMap.txt", whiteMap[4])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\whiteRookMap.txt", whiteMap[5])
-
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackPawnMap.txt", blackMap[0])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackQueenMap.txt", blackMap[1])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackKnightMap.txt", blackMap[2])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackKingMap.txt", blackMap[3])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackBishopMap.txt", blackMap[4])
-writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackRookMap.txt", blackMap[5])
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackPawnMap.txt", blackMap[0], False)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackQueenMap.txt", blackMap[1], False)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackKnightMap.txt", blackMap[2], False)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackKingMap.txt", blackMap[3], False)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackBishopMap.txt", blackMap[4], False)
+writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\maps\blackRookMap.txt", blackMap[5], False)
 
 # blackRawData = getRawGames('black')
 # print(blackRawData)

@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns  # Seaborn is used for KDE
+from datetime import datetime
+
+today = datetime.now()
 
 def read_data_from_file(file_path):
     data = []
@@ -91,7 +94,8 @@ def plot_data_pairs(data_pairs):
     A_values, B_values = zip(*data_pairs)
 
     plt.scatter(B_values, A_values, alpha=0.5)
-    plt.title('Find move at depth 5, 3400 moves 14-12-2023')
+    plt.suptitle(str(today))
+    plt.title('Find move at depth '+str(input('depth:'))+', '+str(input('moves:'))+' moves')
     plt.ylabel('Response Time (ms)')
     plt.xlabel('Complexity (n possible branches)')
     plt.show()
@@ -100,7 +104,7 @@ def plot_data_pairs(data_pairs):
 
 # Main function to execute the program
 def main():
-    file_path = "responsetimelog5.txt"
+    file_path = "responsetimelog.txt"
     data = pair_read_data_from_file(file_path)
     plot_data_pairs(data)
 

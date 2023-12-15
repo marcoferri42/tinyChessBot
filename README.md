@@ -5,7 +5,7 @@ A small bot using Alpha-Beta pruning and a custom evaluation function.
 ### To do:
 - Replace object evaluation with bitboard evaluation
 - Pawn structure analysis
-- Piece relative value
+- ~~Piece relative value~~
 - Exchange when ahead
 - ~~Iterative Deepening~~
 

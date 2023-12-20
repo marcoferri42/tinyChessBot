@@ -93,7 +93,7 @@ def plot_data_pairs(data_pairs):
     # Unzip the list of tuples into two separate lists
     A_values, B_values = zip(*data_pairs)
 
-    plt.scatter(B_values, A_values, alpha=0.5)
+    plt.scatter(B_values, A_values, alpha=0.25)
     plt.suptitle(str(today))
     plt.title('Find move at depth '+str(input('depth:'))+', '+str(input('moves:'))+' moves')
     plt.ylabel('Response Time (ms)')
@@ -104,7 +104,7 @@ def plot_data_pairs(data_pairs):
 
 # Main function to execute the program
 def main():
-    file_path = "responsetimelog.txt"
+    file_path = "C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\logsresponsetime4log.txt"
     data = pair_read_data_from_file(file_path)
     plot_data_pairs(data)
 

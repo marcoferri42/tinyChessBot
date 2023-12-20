@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using Microsoft.CodeAnalysis;
+
 
 public class Node // classetta nodo custom
 {
@@ -32,37 +32,32 @@ public class Node // classetta nodo custom
 
 public class MyBot : IChessBot
 {
-    private Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)> positionalMaps = 
+    private static Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)> positionalMaps = 
         new Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)>()
         {
             { PieceType.Queen, 
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteQueenMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackQueenMap.txt")
-                )
-            },
-            { PieceType.Pawn,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whitePawnMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackPawnMap.txt")
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteQMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackQMap.txt")
                 )
             },
             { PieceType.Bishop,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteBishopMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackBishopMap.txt")
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteBMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackBMap.txt")
                 )
             },
             { PieceType.Knight,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteKnightMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackKnightMap.txt")
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteNMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackNMap.txt")
                 )
             },
             { PieceType.Rook,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteRookMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackRookMap.txt")
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteRMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackRMap.txt")
                 )
             },
             { PieceType.King,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\whiteKingMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\maps\\blackKingMap.txt")
+                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteKMap.txt"),
+                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackKMap.txt")
                 )
             }
         };
@@ -94,28 +89,34 @@ public class MyBot : IChessBot
         System.Console.WriteLine(pruned);
         */
         System.Console.WriteLine(timer.MillisecondsElapsedThisTurn + " ms");
+        System.Console.WriteLine(tree.child.move + "...." + tree.child.eval);
+
         return tree.child.move;
     }
-
 
     private int Evaluate(Board board)
     {
         int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
         List<Move> gameHistory = board.GameMoveHistory.ToList<Move>();
 
-        if (board.IsInCheckmate())
-        {
-            return 1000000000 * turn;
-        }
-
         if (seenPositions.ContainsKey(board.ZobristKey))
         {
             return seenPositions[board.ZobristKey];
         }
 
+        if (board.IsInCheckmate())
+        {
+            
+            score = 1000000000 * turn;
+            seenPositions.Add(board.ZobristKey, score);
+            return score;
+        }
+
         if (board.IsDraw())
         {
-            return 0;
+            score = 0;
+            seenPositions.Add(board.ZobristKey, score);
+            return score;
         }
 
         if (board.IsInCheck())
@@ -123,24 +124,26 @@ public class MyBot : IChessBot
             score += 5 * turn;
         }
 
-        if (board.HasKingsideCastleRight(board.IsWhiteToMove) ||
-            board.HasQueensideCastleRight(board.IsWhiteToMove)) // incentivo a non rompere diritto arrocco
+        foreach (PieceType type in values.Keys)
         {
-            score += 5 * turn;
+            score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(type, true)) * values[type];      // white
+            score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(type, false)) * - values[type];  // 
         }
 
-        
-        var allPieceLists = board.GetAllPieceLists();
-        foreach (var pieceList in allPieceLists)
+        var pieces = board.GetAllPieceLists().SelectMany(p => p).ToList();
+        foreach (Piece piece in pieces)
         {
-            foreach (var piece in pieceList)
+            var sum = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, piece.IsWhite)); // valore materiale
+            score += piece.IsWhite ? sum : -sum;
+            
+            
+            if (piece.PieceType != PieceType.Pawn)
             {
-                score += values[piece.PieceType] * (piece.IsWhite ? 1 : -1); // valore materiale 
-
-                score += piece.IsWhite ? 
-                    positionalMaps[piece.PieceType].Item1[piece.Square.Name] :// valore posizionale
-                    positionalMaps[piece.PieceType].Item2[piece.Square.Name];
+                score += piece.IsWhite ?
+                        positionalMaps[piece.PieceType].Item1[piece.Square.Name] :  // valore posizionale
+                        positionalMaps[piece.PieceType].Item2[piece.Square.Name];
             }
+
         }
 
         if (board.TrySkipTurn())
@@ -161,11 +164,6 @@ public class MyBot : IChessBot
             if (gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare) // one move rule
             {
                 score -= 10 * turn;
-            }
-
-            if (board.IsRepeatedPosition() && Math.Sign(score) == Math.Sign(turn)) // no draw se stai vincendo
-            {
-                score += -60 * turn;
             }
 
             var lastMoveStart = gameHistory.Last().StartSquare;
@@ -288,7 +286,6 @@ public class MyBot : IChessBot
     {
         //File.AppendAllText("C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\" + filename, log); // finestre
         //File.AppendAllText("/home/hos/Desktop/proj/tinyChessBot/Chess-Challenge/src/My Bot/" + filename, log);    // linux
-
     }
 
     private static Dictionary<string, int> ReadMapFromFile(string fileName)
@@ -301,10 +298,11 @@ public class MyBot : IChessBot
             lineList.Remove(":");
 
             if (lineList.Count() > 1)
-            { 
+            {
                 res.Add(lineList[0], int.Parse(lineList[1]));
             }
         }
         return res;
     }
+
 }

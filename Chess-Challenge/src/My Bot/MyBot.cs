@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 
 public class Node // classetta nodo custom
@@ -32,32 +33,36 @@ public class Node // classetta nodo custom
 
 public class MyBot : IChessBot
 {
+    //private static string winPath = "..\\..\\..\\src\\My Bot\\pgn\\maps\\";
+    private static string linuxPath = "src/My Bot/pgn/maps/";
+
+
     private static Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)> positionalMaps = 
         new Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)>()
         {
             { PieceType.Queen, 
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteQMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackQMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteQMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackQMap.txt")
                 )
             },
             { PieceType.Bishop,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteBMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackBMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteBMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackBMap.txt")
                 )
             },
             { PieceType.Knight,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteNMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackNMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteNMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackNMap.txt")
                 )
             },
             { PieceType.Rook,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteRMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackRMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteRMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackRMap.txt")
                 )
             },
             { PieceType.King,
-                (ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\whiteKMap.txt"),
-                 ReadMapFromFile("..\\..\\..\\src\\My Bot\\pgn\\maps\\blackKMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteKMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackKMap.txt")
                 )
             }
         };
@@ -88,8 +93,7 @@ public class MyBot : IChessBot
         System.Console.WriteLine(tree.child.eval);
         System.Console.WriteLine(pruned);
         */
-        System.Console.WriteLine(timer.MillisecondsElapsedThisTurn + " ms");
-        System.Console.WriteLine(tree.child.move + "...." + tree.child.eval);
+        System.Console.WriteLine(tree.child.move + "...." + tree.child.eval + "...." + timer.MillisecondsElapsedThisTurn + " ms");
 
         return tree.child.move;
     }
@@ -108,34 +112,36 @@ public class MyBot : IChessBot
         {
             
             score = 1000000000 * turn;
-            seenPositions.Add(board.ZobristKey, score);
+            seenPositions.TryAdd(board.ZobristKey, score);
             return score;
         }
 
         if (board.IsDraw())
         {
             score = 0;
-            seenPositions.Add(board.ZobristKey, score);
+            seenPositions.TryAdd(board.ZobristKey, score);
             return score;
         }
 
         if (board.IsInCheck())
         {
-            score += 5 * turn;
+            score += 10 * turn;
         }
 
-        foreach (PieceType type in values.Keys)
-        {
-            score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(type, true)) * values[type];      // white
-            score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(type, false)) * - values[type];  // 
-        }
-
+        var seenTypes = new List<PieceType>();
         var pieces = board.GetAllPieceLists().SelectMany(p => p).ToList();
         foreach (Piece piece in pieces)
-        {
-            var sum = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, piece.IsWhite)); // valore materiale
+        {   
+            var sum = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, piece.IsWhite))/2; // valore attacchi
             score += piece.IsWhite ? sum : -sum;
             
+            if (!seenTypes.Contains(piece.PieceType))
+            {
+                var w = BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(piece.PieceType, true)) * values[piece.PieceType];    // valore materiale
+                var b = BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(piece.PieceType, false)) * values[piece.PieceType];
+                score += w-b;
+                seenTypes.Add(piece.PieceType);
+            }
             
             if (piece.PieceType != PieceType.Pawn)
             {
@@ -143,14 +149,15 @@ public class MyBot : IChessBot
                         positionalMaps[piece.PieceType].Item1[piece.Square.Name] :  // valore posizionale
                         positionalMaps[piece.PieceType].Item2[piece.Square.Name];
             }
-
         }
 
+        int currentmoves = board.GetLegalMoves().Count();
         if (board.TrySkipTurn())
         {
-            int currentmoves = board.GetLegalMoves().Count();
             int opponentmoves = board.GetLegalMoves().Count();
             score += (currentmoves > opponentmoves) ? turn : 0; // incentivo a limitare mosse nemico
+            score += currentmoves * turn; // incentivo masssimizzare numero mosse
+            
             board.UndoSkipTurn();
         }
 
@@ -158,7 +165,7 @@ public class MyBot : IChessBot
         {
             if (gameHistory.Last().IsCastles) // incentivo castling
             {
-                score -= 50 * turn;
+                score += 100 * turn;
             }
             
             if (gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare) // one move rule
@@ -166,19 +173,20 @@ public class MyBot : IChessBot
                 score -= 10 * turn;
             }
 
+            /*
             var lastMoveStart = gameHistory.Last().StartSquare;
             var lastMoveTarget = gameHistory.Last().TargetSquare;
             var king = board.GetKingSquare(!board.IsWhiteToMove);
             if (Math.Abs(lastMoveStart.File - king.File) > Math.Abs(lastMoveTarget.File - king.File) || // incentivo se mi avvicino al re 
                 Math.Abs(lastMoveTarget.Rank - king.Rank) > Math.Abs(lastMoveStart.Rank - king.Rank))
             {
-                score += 100 * turn;
-            }
+                score += 25 * turn;
+            }*/
         }
 
 
         // add position to table
-        seenPositions.Add(board.ZobristKey, score);
+        seenPositions.TryAdd(board.ZobristKey, score);
 
         return score;
     }
@@ -187,10 +195,11 @@ public class MyBot : IChessBot
     {
         if (depth == 0 || board.IsInCheckmate() || board.IsDraw())
         {
+            UpdateTreePath(rootNode);
             return rootNode;
         }
 
-        var moves = PrioritizeMoves(board.GetLegalMoves());
+        var moves = PrioritizeMoves(board.GetLegalMoves(), board);
 
         if (board.IsWhiteToMove) // maximizing
         {
@@ -203,6 +212,8 @@ public class MyBot : IChessBot
                 
                 Node child = AlphaB(alpha, beta, board, depth - 1, new Node(rootNode, Evaluate(board), move, board)); // recursive call for children
 
+                board.UndoMove(move);
+
                 if (max.eval < child.eval)
                 {
                     max = child;
@@ -212,11 +223,9 @@ public class MyBot : IChessBot
 
                 if (beta <= alpha)
                 {
-                    board.UndoMove(move);
                     break;
                 }
 
-                board.UndoMove(move);
             }
 
             rootNode.child = max;
@@ -234,6 +243,8 @@ public class MyBot : IChessBot
 
                 Node child = AlphaB(alpha, beta, board, depth - 1, new Node(rootNode, Evaluate(board), move, board)); // recursive call for children
 
+                board.UndoMove(move);
+
                 if (min.eval > child.eval)
                 {
                     min = child;
@@ -243,11 +254,8 @@ public class MyBot : IChessBot
 
                 if (beta <= alpha)
                 {
-                    board.UndoMove(move);
                     break;
                 }
-
-                board.UndoMove(move);
             }
 
             rootNode.child = min;
@@ -269,15 +277,25 @@ public class MyBot : IChessBot
         }
     }
 
-    private HashSet<Move> PrioritizeMoves(Move[] PossibleMoves)
+    private HashSet<Move> PrioritizeMoves(Move[] PossibleMoves, Board board)
     {
+        var check = new Dictionary<Move, bool>();
+        foreach (Move move in PossibleMoves)
+        {
+            board.MakeMove(move);
+            check[move] = board.IsInCheck() || board.IsInCheckmate();
+            board.UndoMove(move);
+        }
+
         var MoveSet = PossibleMoves.ToHashSet();
 
-        MoveSet.OrderBy(m => (m.IsCastles ||
-                                 m.IsCapture ||
-                                 m.IsPromotion ||
-                                 m.PromotionPieceType == PieceType.Queen ||
-                                 m.IsEnPassant) ? 0 : 1);
+        MoveSet.OrderBy(m => (  check[m] ||
+                                m.IsCastles ||
+                                m.IsCapture ||
+                                m.IsPromotion ||
+                                m.PromotionPieceType == PieceType.Queen ||
+                                m.IsEnPassant
+                            ) ? 0 : 1);
 
         return MoveSet;
     }

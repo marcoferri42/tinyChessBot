@@ -23,11 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="src\My Bot\MyBot.cs">
+    <Compile Update="src\My Bot\OctoBot.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Compile>
-    <Compile Update="src\Framework\Application\UI\BotBrainCapacityUI.cs">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Compile>
     <Compile Update="src\Evil Bot\EvilBot.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -51,7 +48,6 @@
 
   <ItemGroup>
     <Folder Include="src\Framework\Chess\" />
-    <Folder Include="src\My Bot\logs\" />
     <Folder Include="src\My Bot\pgn\maps\" />
   </ItemGroup>
 

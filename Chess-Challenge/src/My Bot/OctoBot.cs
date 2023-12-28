@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Runtime.InteropServices;
+using Microsoft.CodeAnalysis;
 
 
 public class Node // classetta nodo custom
@@ -31,9 +33,9 @@ public class Node // classetta nodo custom
 }
 
 
-public class MyBot : IChessBot
+public class OctoBot : IChessBot
 {
-    //private static string winPath = "..\\..\\..\\src\\My Bot\\pgn\\maps\\";
+    private static string winPath = "..\\..\\..\\src\\My Bot\\pgn\\maps\\";
     private static string linuxPath = "src/My Bot/pgn/maps/";
 
 
@@ -41,28 +43,28 @@ public class MyBot : IChessBot
         new Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)>()
         {
             { PieceType.Queen, 
-                (ReadMapFromFile(linuxPath + "whiteQMap.txt"),
-                 ReadMapFromFile(linuxPath + "blackQMap.txt")
+                (ReadMapFromFile(winPath + "whiteQMap.txt"),
+                 ReadMapFromFile(winPath + "blackQMap.txt")
                 )
             },
             { PieceType.Bishop,
-                (ReadMapFromFile(linuxPath + "whiteBMap.txt"),
-                 ReadMapFromFile(linuxPath + "blackBMap.txt")
+                (ReadMapFromFile(winPath + "whiteBMap.txt"),
+                 ReadMapFromFile(winPath + "blackBMap.txt")
                 )
             },
             { PieceType.Knight,
-                (ReadMapFromFile(linuxPath + "whiteNMap.txt"),
-                 ReadMapFromFile(linuxPath + "blackNMap.txt")
+                (ReadMapFromFile(winPath + "whiteNMap.txt"),
+                 ReadMapFromFile(winPath + "blackNMap.txt")
                 )
             },
             { PieceType.Rook,
-                (ReadMapFromFile(linuxPath + "whiteRMap.txt"),
-                 ReadMapFromFile(linuxPath + "blackRMap.txt")
+                (ReadMapFromFile(winPath + "whiteRMap.txt"),
+                 ReadMapFromFile(winPath + "blackRMap.txt")
                 )
             },
             { PieceType.King,
-                (ReadMapFromFile(linuxPath + "whiteKMap.txt"),
-                 ReadMapFromFile(linuxPath + "blackKMap.txt")
+                (ReadMapFromFile(winPath + "whiteKMap.txt"),
+                 ReadMapFromFile(winPath + "blackKMap.txt")
                 )
             }
         };
@@ -77,6 +79,13 @@ public class MyBot : IChessBot
         };
 
     private Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
+
+
+    public void CliThink()
+    {
+    
+    }
+
 
     public Move Think(Board board, Timer timer)
     {
@@ -93,12 +102,12 @@ public class MyBot : IChessBot
         System.Console.WriteLine(tree.child.eval);
         System.Console.WriteLine(pruned);
         */
-        System.Console.WriteLine(tree.child.move + "...." + tree.child.eval + "...." + timer.MillisecondsElapsedThisTurn + " ms");
+        System.Console.WriteLine(tree.child.move + "....boardeval" + tree.child.eval + "....moveeval" + MoveEval(tree.child.move, board.IsWhiteToMove) + "....in" + timer.MillisecondsElapsedThisTurn + " ms");
 
         return tree.child.move;
     }
 
-    private int Evaluate(Board board)
+    private int BoardEval (Board board, int depth)
     {
         int score = 0, turn = board.IsWhiteToMove ? -1 : 1;
         List<Move> gameHistory = board.GameMoveHistory.ToList<Move>();
@@ -111,16 +120,15 @@ public class MyBot : IChessBot
         if (board.IsInCheckmate())
         {
             
-            score = 1000000000 * turn;
+            score = (9999990+depth) * turn;
             seenPositions.TryAdd(board.ZobristKey, score);
             return score;
         }
 
         if (board.IsDraw())
         {
-            score = 0;
-            seenPositions.TryAdd(board.ZobristKey, score);
-            return score;
+            seenPositions.TryAdd(board.ZobristKey, 0);
+            return 0;
         }
 
         if (board.IsInCheck())
@@ -128,27 +136,28 @@ public class MyBot : IChessBot
             score += 10 * turn;
         }
 
-        var seenTypes = new List<PieceType>();
         var pieces = board.GetAllPieceLists().SelectMany(p => p).ToList();
         foreach (Piece piece in pieces)
         {   
-            var sum = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, piece.IsWhite))/2; // valore attacchi
-            score += piece.IsWhite ? sum : -sum;
-            
-            if (!seenTypes.Contains(piece.PieceType))
-            {
-                var w = BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(piece.PieceType, true)) * values[piece.PieceType];    // valore materiale
-                var b = BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(piece.PieceType, false)) * values[piece.PieceType];
-                score += w-b;
-                seenTypes.Add(piece.PieceType);
-            }
+            var sum = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, piece.IsWhite)); // numero attacchi possibili pesati
+            sum = sum * values[piece.PieceType]/10;
+            score += sum * (piece.IsWhite ? 1 : -1);
             
             if (piece.PieceType != PieceType.Pawn)
             {
                 score += piece.IsWhite ?
-                        positionalMaps[piece.PieceType].Item1[piece.Square.Name] :  // valore posizionale
-                        positionalMaps[piece.PieceType].Item2[piece.Square.Name];
+                        positionalMaps[piece.PieceType].Item1[piece.Square.Name]/2 :  // valore posizionale
+                        positionalMaps[piece.PieceType].Item2[piece.Square.Name]/2 ;
             }
+        }
+
+        foreach (PieceType type in values.Keys)
+        {
+
+            var w = BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(type, true)) * values[type];    // valore materiale
+            var b = BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(type, false)) * values[type];
+
+            score += w - b;
         }
 
         int currentmoves = board.GetLegalMoves().Count();
@@ -156,39 +165,43 @@ public class MyBot : IChessBot
         {
             int opponentmoves = board.GetLegalMoves().Count();
             score += (currentmoves > opponentmoves) ? turn : 0; // incentivo a limitare mosse nemico
-            score += currentmoves * turn; // incentivo masssimizzare numero mosse
+            score += currentmoves/3 * turn; // incentivo masssimizzare numero mosse
             
             board.UndoSkipTurn();
         }
 
         if (gameHistory.Count() >= 3)
         {
-            if (gameHistory.Last().IsCastles) // incentivo castling
-            {
-                score += 100 * turn;
-            }
             
             if (gameHistory[^3].TargetSquare == gameHistory.Last().StartSquare) // one move rule
             {
-                score -= 10 * turn;
+                score -= 10 * turn; // bilancia check
             }
 
-            /*
-            var lastMoveStart = gameHistory.Last().StartSquare;
-            var lastMoveTarget = gameHistory.Last().TargetSquare;
-            var king = board.GetKingSquare(!board.IsWhiteToMove);
-            if (Math.Abs(lastMoveStart.File - king.File) > Math.Abs(lastMoveTarget.File - king.File) || // incentivo se mi avvicino al re 
-                Math.Abs(lastMoveTarget.Rank - king.Rank) > Math.Abs(lastMoveStart.Rank - king.Rank))
-            {
-                score += 25 * turn;
-            }*/
         }
-
 
         // add position to table
         seenPositions.TryAdd(board.ZobristKey, score);
 
         return score;
+    }
+
+
+    private int MoveEval(Move move, bool isWhitetoMove)
+    {
+        var turn = isWhitetoMove ? -1 : 1;
+        var eval = 0;
+
+        if(move.IsCastles)
+        {
+            eval += 100;
+        }
+        if(move.IsCapture)
+        { 
+            eval -= values[move.MovePieceType] / 100;
+            eval += (values[move.CapturePieceType] - values[move.MovePieceType])/5;
+        }
+        return eval * turn;
     }
 
     private Node AlphaB(int alpha, int beta, Board board, int depth, Node rootNode)
@@ -209,8 +222,10 @@ public class MyBot : IChessBot
             foreach (Move move in moves)
             {
                 board.MakeMove(move);
-                
-                Node child = AlphaB(alpha, beta, board, depth - 1, new Node(rootNode, Evaluate(board), move, board)); // recursive call for children
+
+                var child = new Node(rootNode, BoardEval(board, depth-1) + MoveEval(move, board.IsWhiteToMove), move, board);
+
+                AlphaB(alpha, beta, board, depth - 1, child); // recursive call for children
 
                 board.UndoMove(move);
 
@@ -241,7 +256,9 @@ public class MyBot : IChessBot
             {
                 board.MakeMove(move);
 
-                Node child = AlphaB(alpha, beta, board, depth - 1, new Node(rootNode, Evaluate(board), move, board)); // recursive call for children
+                var child = new Node(rootNode, BoardEval(board, depth) + MoveEval(move, board.IsWhiteToMove), move, board);
+
+                AlphaB(alpha, beta, board, depth - 1, child); // recursive call for children
 
                 board.UndoMove(move);
 
@@ -279,19 +296,11 @@ public class MyBot : IChessBot
 
     private HashSet<Move> PrioritizeMoves(Move[] PossibleMoves, Board board)
     {
-        var check = new Dictionary<Move, bool>();
-        foreach (Move move in PossibleMoves)
-        {
-            board.MakeMove(move);
-            check[move] = board.IsInCheck() || board.IsInCheckmate();
-            board.UndoMove(move);
-        }
 
         var MoveSet = PossibleMoves.ToHashSet();
 
-        MoveSet.OrderBy(m => (  check[m] ||
-                                m.IsCastles ||
-                                m.IsCapture ||
+        MoveSet.OrderBy(m => (  m.IsCastles ||
+                                (m.IsCapture && values[m.CapturePieceType] > values[m.MovePieceType]) ||
                                 m.IsPromotion ||
                                 m.PromotionPieceType == PieceType.Queen ||
                                 m.IsEnPassant

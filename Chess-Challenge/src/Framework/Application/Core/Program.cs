@@ -10,7 +10,7 @@ namespace ChessChallenge.Application
         const bool hideRaylibLogs = true;
         static Camera2D cam;
 
-        public static void OLDMain()
+        public static void Main()
         {
             Vector2 loadedWindowSize = GetSavedWindowSize();
             int screenWidth = (int)loadedWindowSize.X;

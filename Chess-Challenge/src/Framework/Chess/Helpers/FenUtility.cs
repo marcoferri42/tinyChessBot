@@ -238,8 +238,6 @@ namespace ChessChallenge.Chess
 
                 string[] sections = fen.Split(" ");
 
-                sections.ToList().ForEach(Console.WriteLine);
-
                 int file = 0;
                 int rank = 7;
 

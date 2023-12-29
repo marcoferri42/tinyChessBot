@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 internal class Cli
 {
-    static public void Main(String[] args)
+    void Mainsssw(String[] args)
     {
         var OctoBot = new OctoBot();
 

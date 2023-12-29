@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace ChessChallenge.Chess
 {
@@ -235,7 +236,9 @@ namespace ChessChallenge.Chess
                 this.fen = fen;
                 int[] squarePieces = new int[64];
 
-                string[] sections = fen.Split(' ');
+                string[] sections = fen.Split(" ");
+
+                sections.ToList().ForEach(Console.WriteLine);
 
                 int file = 0;
                 int rank = 7;

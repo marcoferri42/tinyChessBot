@@ -3,9 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Runtime.InteropServices;
 using Microsoft.CodeAnalysis;
+using System.Collections;
 
 
 public class Node // classetta nodo custom
@@ -33,7 +32,7 @@ public class Node // classetta nodo custom
 }
 
 
-public class OctoBot : IChessBot
+public class OctoBot
 {
     private static string winPath = "..\\..\\..\\src\\My Bot\\pgn\\maps\\";
     private static string linuxPath = "src/My Bot/pgn/maps/";
@@ -43,28 +42,28 @@ public class OctoBot : IChessBot
         new Dictionary<PieceType, (Dictionary<String, int>, Dictionary<String, int>)>()
         {
             { PieceType.Queen, 
-                (ReadMapFromFile(winPath + "whiteQMap.txt"),
-                 ReadMapFromFile(winPath + "blackQMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteQMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackQMap.txt")
                 )
             },
             { PieceType.Bishop,
-                (ReadMapFromFile(winPath + "whiteBMap.txt"),
-                 ReadMapFromFile(winPath + "blackBMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteBMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackBMap.txt")
                 )
             },
             { PieceType.Knight,
-                (ReadMapFromFile(winPath + "whiteNMap.txt"),
-                 ReadMapFromFile(winPath + "blackNMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteNMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackNMap.txt")
                 )
             },
             { PieceType.Rook,
-                (ReadMapFromFile(winPath + "whiteRMap.txt"),
-                 ReadMapFromFile(winPath + "blackRMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteRMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackRMap.txt")
                 )
             },
             { PieceType.King,
-                (ReadMapFromFile(winPath + "whiteKMap.txt"),
-                 ReadMapFromFile(winPath + "blackKMap.txt")
+                (ReadMapFromFile(linuxPath + "whiteKMap.txt"),
+                 ReadMapFromFile(linuxPath + "blackKMap.txt")
                 )
             }
         };
@@ -81,20 +80,40 @@ public class OctoBot : IChessBot
     private Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
 
 
-    public void CliThink()
+    public void CliThink(string fen, string[] moves)
     {
-    
+        var list = moves.ToList();
+        var Moves = new ArrayList();
+        var start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+        fen = fen =="startpos" ? start : fen;
+        
+        Board board = Board.CreateBoardFromFEN(fen);
+
+        foreach(string move in list){
+            Moves.Add(new Move(move, board));
+            Console.WriteLine(new Move(move, board));
+        }
+
+        Console.WriteLine(Moves.Count);
+        foreach(Move mv in Moves)
+        {
+            board.MakeMove(mv);
+            Console.WriteLine(Think(board, mv));
+            board.UndoMove(mv);
+        }
     }
 
 
-    public Move Think(Board board, Timer timer)
+    public String Think(Board board, Move mv)
     {
         int depth = 4;
         Node tree = new Node();
-
+        tree.move = mv;
         for (int i = 0; i < depth; i++) // iterative deepening
         {
             AlphaB(int.MinValue, int.MaxValue, board, i, tree);
+            Console.WriteLine("info depth " + i + " score cp " + tree.eval + " time 0 nodes 42 nps 69 pv "+ tree.move.ToString());
         }
 
         /*
@@ -102,9 +121,9 @@ public class OctoBot : IChessBot
         System.Console.WriteLine(tree.child.eval);
         System.Console.WriteLine(pruned);
         */
-        System.Console.WriteLine(tree.child.move + "....boardeval" + tree.child.eval + "....moveeval" + MoveEval(tree.child.move, board.IsWhiteToMove) + "....in" + timer.MillisecondsElapsedThisTurn + " ms");
+        //System.Console.WriteLine(tree.child.move + "....boardeval" + tree.child.eval + "....moveeval" + MoveEval(tree.child.move, board.IsWhiteToMove) + "....in" + timer.MillisecondsElapsedThisTurn + " ms");
 
-        return tree.child.move;
+        return tree.child.move.ToString();
     }
 
     private int BoardEval (Board board, int depth)
@@ -145,9 +164,9 @@ public class OctoBot : IChessBot
             
             if (piece.PieceType != PieceType.Pawn)
             {
-                score += piece.IsWhite ?
-                        positionalMaps[piece.PieceType].Item1[piece.Square.Name]/2 :  // valore posizionale
-                        positionalMaps[piece.PieceType].Item2[piece.Square.Name]/2 ;
+               // score += piece.IsWhite ?
+                //        positionalMaps[piece.PieceType].Item1[piece.Square.Name]/2 :  // valore posizionale
+                //        positionalMaps[piece.PieceType].Item2[piece.Square.Name]/2 ;
             }
         }
 
@@ -208,7 +227,7 @@ public class OctoBot : IChessBot
     {
         if (depth == 0 || board.IsInCheckmate() || board.IsDraw())
         {
-            UpdateTreePath(rootNode);
+            UpdateTreePath(rootNode, depth);
             return rootNode;
         }
 
@@ -223,8 +242,9 @@ public class OctoBot : IChessBot
             {
                 board.MakeMove(move);
 
-                var child = new Node(rootNode, BoardEval(board, depth-1) + MoveEval(move, board.IsWhiteToMove), move, board);
-
+                var eval = BoardEval(board, depth-1) + MoveEval(move, board.IsWhiteToMove);
+                var child = new Node(rootNode, eval, move, board);
+                
                 AlphaB(alpha, beta, board, depth - 1, child); // recursive call for children
 
                 board.UndoMove(move);
@@ -244,7 +264,8 @@ public class OctoBot : IChessBot
             }
 
             rootNode.child = max;
-            UpdateTreePath(rootNode.child);
+            rootNode.move = max.move;
+            UpdateTreePath(rootNode.child, depth);
 
             return rootNode;
         }
@@ -256,7 +277,9 @@ public class OctoBot : IChessBot
             {
                 board.MakeMove(move);
 
-                var child = new Node(rootNode, BoardEval(board, depth) + MoveEval(move, board.IsWhiteToMove), move, board);
+                var eval = BoardEval(board, depth-1) + MoveEval(move, board.IsWhiteToMove);
+                var child = new Node(rootNode, eval, move, board);
+                //Console.WriteLine("info depth " + depth + " score cp " + eval + " time 0 nodes 42 nps 69 pv e2e4");
 
                 AlphaB(alpha, beta, board, depth - 1, child); // recursive call for children
 
@@ -276,13 +299,14 @@ public class OctoBot : IChessBot
             }
 
             rootNode.child = min;
-            UpdateTreePath(rootNode.child);
+            rootNode.move = min.move;
+            UpdateTreePath(rootNode.child, depth);
 
             return rootNode;
         }
     }
 
-    private void UpdateTreePath(Node node)
+    private void UpdateTreePath(Node node, int depth)
     {
         if (node.child != null)
         {
@@ -290,7 +314,7 @@ public class OctoBot : IChessBot
         }
         if (node.parent != null)
         {
-            UpdateTreePath(node.parent); // recursively update the parent node
+            UpdateTreePath(node.parent, depth); // recursively update the parent node
         }
     }
 

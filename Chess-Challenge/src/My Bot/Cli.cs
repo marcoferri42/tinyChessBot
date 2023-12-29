@@ -42,21 +42,18 @@ internal class Cli
                 default:
                     break;
             }
-            if (input.Contains("position") && input.Contains(" ") && input.Count()> 10)
+            if (input.Contains("position"))
             {
-                var payload = input[9..].Split(" ");
-
-                var fen = payload[1];
-                var moves = payload[3..];
-                if (payload[2].ToString() != "move")
+                var payloadIndex = input.IndexOf("moves ");
+                if (payloadIndex != -1)
                 {
-                    moves = payload[4..];
-                }
+                    var fen = input.Substring(9, payloadIndex - 9).Trim();
+                    var moves = input.Substring(payloadIndex + 6).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-                Console.WriteLine(fen);
-                Console.WriteLine(moves);
-                Array.ForEach(moves, Console.WriteLine);
+                    OctoBot.CliThink(fen, moves);
+                }
             }
+
 
 
             if (input.Count() >= 1 && input[..2].ToString() == "go")

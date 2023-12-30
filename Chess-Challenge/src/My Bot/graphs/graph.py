@@ -104,7 +104,7 @@ def plot_data_pairs(data_pairs):
 
 # Main function to execute the program
 def main():
-    file_path = "C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\logsresponsetime4log.txt"
+    file_path = "C:\\Users\\usr\\source\\repos\\tinyChessBot\\Chess-Challenge\\src\\My Bot\\logs\\logresponsetime4.txt"
     data = pair_read_data_from_file(file_path)
     plot_data_pairs(data)
 

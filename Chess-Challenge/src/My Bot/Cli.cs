@@ -8,9 +8,11 @@ using System.Threading.Tasks;
 
 internal class Cli
 {
-    void Mainsssw(String[] args)
+    public static void Mainssss(string[] args)
     {
         var OctoBot = new OctoBot();
+        var fen = "";
+        var moves = new string[60];
 
         Console.WriteLine("                    dP            dP                  dP  \r\n                    88            88                  88  \r\n.d8888b. .d8888b. d8888P .d8888b. 88d888b. .d8888b. d8888P\r\n88'  `88 88'  `\"\"   88   88'  `88 88'  `88 88'  `88   88  \r\n88.  .88 88.  ...   88   88.  .88 88.  .88 88.  .88   88  \r\n`88888P' `88888P'   dP   `88888P' 88Y8888' `88888P'   dP  ");
         while (true)
@@ -20,8 +22,9 @@ internal class Cli
             switch (input)
             {
                 case "uci":
+                    Console.WriteLine("id OctoBot.v1");
                     Console.WriteLine("id name OctoBot");
-                    Console.WriteLine("id author joe");
+                    Console.WriteLine("id author matifema");
                     Console.WriteLine("option");
                     Console.WriteLine("uciok");
                     break;
@@ -31,8 +34,10 @@ internal class Cli
                     break;
 
                 case "ucinewgame":
-                    // reset board and data from search
+                    fen = "";
+                    moves = new string[60];
                     break;
+
                 case "stop":
                     // stop calculation
                     break;
@@ -47,20 +52,15 @@ internal class Cli
                 var payloadIndex = input.IndexOf("moves ");
                 if (payloadIndex != -1)
                 {
-                    var fen = input.Substring(9, payloadIndex - 9).Trim();
-                    var moves = input.Substring(payloadIndex + 6).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-                    OctoBot.CliThink(fen, moves);
+                    fen = input.Substring(9, payloadIndex - 9).Trim();
+                    moves = input.Substring(payloadIndex + 6).Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 }
             }
-
-
 
             if (input.Count() >= 1 && input[..2].ToString() == "go")
             {
                 // start engine
-                Console.WriteLine("start");
-                Console.WriteLine("info depth 1 score cp -1 time 10 nodes 26 nps 633 pv e7e6");
+                OctoBot.CliThink(fen, moves);
             }
         }
     }

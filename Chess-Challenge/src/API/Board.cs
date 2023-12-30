@@ -362,7 +362,21 @@ namespace ChessChallenge.API
 		/// All the moves played in the game so far.
 		/// This only includes moves played in the actual game, not moves made on the board while the bot is thinking.
 		/// </summary>
-		public Move[] GameMoveHistory { get; private set; }
+		public Move[] GameMoveHistory { 
+			get; 
+			private set;
+		}
+        public string MoveHistoryToString()
+        {
+			var res = "";
+
+			foreach (var move in GameMoveHistory)
+			{
+				res += move.ToString();
+			}
+
+			return res;
+        }
 
         /// <summary>
         /// Creates an ASCII-diagram of the current position.

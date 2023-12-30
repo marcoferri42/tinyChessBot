@@ -122,4 +122,4 @@ for filename in filenames:
     color = 'white' if filename.__contains__('white') else 'black' 
 
     for (i, pieceType) in enumerate(['Q','K','N','B','R']):
-        writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\pgn\maps\\"+color+pieceType+".txt", data[i], filename.__contains__('white'))
+        writeMapstoFile(r"C:\Users\usr\source\repos\tinyChessBot\Chess-Challenge\src\My Bot\pgn\maps\\"+color+pieceType+"Map.txt", data[i], filename.__contains__('white'))

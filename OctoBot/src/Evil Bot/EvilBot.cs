@@ -129,7 +129,7 @@ public class EvilBot : IChessBot
             AlphaB(int.MinValue, int.MaxValue, board, i, tree);
             //Console.WriteLine("info depth " + i + " score cp " + tree.eval + " time 0 nodes 42 nps 69 pv " + tree.move.ToString());
         }
-        Console.WriteLine("EVIL " +tree.child.eval + "  " + tree.child.move);
+        //Console.WriteLine("EVIL " +tree.child.eval + "  " + tree.child.move);
         return tree.child.move;
     }
 

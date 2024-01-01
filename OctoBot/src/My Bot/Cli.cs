@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 internal class Cli
 {
-    public static void Mainssss(string[] args)
+    public static void Mainsss(string[] args)
     {
         var OctoBot = new OctoBot();
         var fen = "";
         var moves = new string[60];
 
-        Console.WriteLine("                    dP            dP                  dP  \r\n                    88            88                  88  \r\n.d8888b. .d8888b. d8888P .d8888b. 88d888b. .d8888b. d8888P\r\n88'  `88 88'  `\"\"   88   88'  `88 88'  `88 88'  `88   88  \r\n88.  .88 88.  ...   88   88.  .88 88.  .88 88.  .88   88  \r\n`88888P' `88888P'   dP   `88888P' 88Y8888' `88888P'   dP  ");
+        //Console.WriteLine("                    dP            dP                  dP  \r\n                    88            88                  88  \r\n.d8888b. .d8888b. d8888P .d8888b. 88d888b. .d8888b. d8888P\r\n88'  `88 88'  `\"\"   88   88'  `88 88'  `88 88'  `88   88  \r\n88.  .88 88.  ...   88   88.  .88 88.  .88 88.  .88   88  \r\n`88888P' `88888P'   dP   `88888P' 88Y8888' `88888P'   dP  ");
         while (true)
         {
             var input = Console.ReadLine();
@@ -22,10 +22,8 @@ internal class Cli
             switch (input)
             {
                 case "uci":
-                    Console.WriteLine("id OctoBot.v1");
                     Console.WriteLine("id name OctoBot");
                     Console.WriteLine("id author matifema");
-                    Console.WriteLine("option");
                     Console.WriteLine("uciok");
                     break;
 
@@ -60,7 +58,14 @@ internal class Cli
             if (input.Count() >= 1 && input[..2].ToString() == "go")
             {
                 // start engine
-                OctoBot.CliThink(fen, moves);
+                try
+                {
+                    OctoBot.CliThink(fen, moves);
+
+                }catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
             }
         }
     }

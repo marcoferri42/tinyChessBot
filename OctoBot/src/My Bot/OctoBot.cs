@@ -31,22 +31,21 @@ public class Node // classetta nodo custom
     }
     public string MoveHistoryToString()
     {
-        var res = "";
-
-        res += move.ToString() + " ";
-
-        if(this.child != null)
+        if(this.child != null && move!=null)
         {
+            var res = move.ToString() + " ";
             res += this.child.MoveHistoryToString();
+            return res;
         }
-        return res;
+        return "";
     }
 }
 
 
 public class OctoBot : IChessBot
 {
-    //private static Dictionary<(PieceType, string), int> positionalMaps = LoadPositionalMap(winPath);
+    private static string winPath = "..\\..\\..\\src\\My Bot\\pgn\\maps\\";
+    private static Dictionary<(PieceType, string), int> positionalMaps = LoadPositionalMap(winPath);
     private Dictionary<PieceType, int> values = new Dictionary<PieceType, int>() { // pieces values
             { PieceType.Pawn, 120 },
             { PieceType.Bishop, 325 },
@@ -56,7 +55,6 @@ public class OctoBot : IChessBot
             { PieceType.King, 100000000 }
         };
     Dictionary<ulong, int> seenPositions = new Dictionary<ulong, int>(); // positions table
-    private static string winPath = "..\\..\\..\\src\\My Bot\\pgn\\maps\\";
     public HashSet<ulong> hashPositions = new HashSet<ulong>();
     private static string linuxPath = "src/My Bot/pgn/maps/";
     private int nNodes = 0;
@@ -71,7 +69,7 @@ public class OctoBot : IChessBot
         var Moves = new List<Move>();
         var start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        fen = fen =="startpos" ? start : fen;
+        fen = fen == "startpos" ? start : fen;
 
         Board board = Board.CreateBoardFromFEN(fen);
 
@@ -83,11 +81,11 @@ public class OctoBot : IChessBot
         {
             board.MakeMove(mv);
         }
-        Console.WriteLine("bestmove " + Think(board, Moves.Last()));
+        //Console.WriteLine("bestmove " + Think(board, Moves.Last()));
     }
     public string Think(Board board, Move mv)
     {
-        Timer timer = new ChessChallenge.API.Timer(10000);
+        Timer timer = new ChessChallenge.API.Timer(100000000);
         Stopwatch stopWatch = new Stopwatch();
        
         if (board.GetLegalMoves().Count() == 1)
@@ -101,7 +99,13 @@ public class OctoBot : IChessBot
         for (int i = 0; i < depth; i++) // iterative deepening
         {
             AlphaB(int.MinValue, int.MaxValue, board, i, tree);
-            Console.WriteLine("info depth " + i + " score cp " + tree.eval + " time "+ timer.MillisecondsElapsedThisTurn + " nodes "+this.nNodes+" nps 69 pv "+ tree.MoveHistoryToString());
+            Console.WriteLine(  
+                "info" +
+                " score cp " + Eval(board, i, mv) + 
+                " depth " + i +
+                " nodes " + this.nNodes +
+                " time " + timer.MillisecondsElapsedThisTurn + 
+                " pv " + tree.MoveHistoryToString());
         }
 
         return tree.child.move.ToString();
@@ -131,14 +135,16 @@ public class OctoBot : IChessBot
 
 
     //-------------------------------------------------------------------- SEARCH
+
+
     private Node AlphaB(int alpha, int beta, Board board, int depth, Node rootNode)
     {
+
         if (depth == 0 || board.IsDraw() || board.IsInCheckmate())
         {
             UpdateTreePath(rootNode, depth);
             return rootNode;
         }
-
         var moves = PrioritizeMoves(board.GetLegalMoves(), board);
 
         if (board.IsWhiteToMove) // maximizing
@@ -154,12 +160,13 @@ public class OctoBot : IChessBot
                     board.UndoMove(move);
                     continue;
                 }
+                var childDepth = depth - 1;
 
-                var eval = Eval(board, depth - 1, move);
+                var eval = Eval(board, childDepth, move);
                 var child = new Node(rootNode, eval, move, board);
                 this.nNodes++;
 
-                child = AlphaB(alpha, beta, board, depth - 1, child); // recursive call for children
+                child = AlphaB(alpha, beta, board, childDepth, child); // recursive call for children
 
                 if(child.eval > max.eval)
                 {
@@ -194,11 +201,13 @@ public class OctoBot : IChessBot
                     board.UndoMove(move);
                     continue;
                 }
+                var childDepth = depth-1;
 
-                var eval = Eval(board, depth - 1, move);
+                var eval = Eval(board, childDepth, move);
                 var child = new Node(rootNode, eval, move, board);
+                this.nNodes++;
 
-                child = AlphaB(alpha, beta, board, depth - 1, child); // recursive call for children
+                child = AlphaB(alpha, beta, board, childDepth, child); // recursive call for children
 
                 if (child.eval < min.eval)
                 {
@@ -237,17 +246,21 @@ public class OctoBot : IChessBot
     private HashSet<Move> PrioritizeMoves(Move[] PossibleMoves, Board board)
     {
 
+
         var MoveSet = PossibleMoves.ToHashSet();
 
-        MoveSet.OrderBy(m => (  m.IsCastles ||
-                                m.IsCapture ||
-                                m.IsPromotion ||
-                                values[board.GetPiece(m.StartSquare).PieceType] <= values[board.GetPiece(m.TargetSquare).PieceType]
-                            ) ? 0 : 1);
+        MoveSet.OrderBy(m => 
+            m.IsCapture ||
+            IsSquareWeak(board, m.TargetSquare) ||
+            m.IsPromotion);
 
         return MoveSet;
     }
 
+    private bool IsSquareWeak(Board b, Square targetSquare)
+    {
+        return !b.SquareIsAttackedByOpponent(targetSquare);
+    }
 
 
 
@@ -283,7 +296,7 @@ public class OctoBot : IChessBot
         }
         if (board.IsInCheckmate())
         {
-            score = (100000000 + depth) * turn;
+            score += 999999999 * turn;
             seenPositions.TryAdd(board.ZobristKey, score);  // checkmate
             return score;       
         }
@@ -294,56 +307,49 @@ public class OctoBot : IChessBot
             return 0;
         }
 
-        if (board.IsInCheck())
+        if (board.TrySkipTurn())
         {
-            score += 20 * turn;     //check
+            score += (board.GetLegalMoves().Count() - nlegalMoves) * turn;    // maximize moves e minimizza moves nemico
+            board.UndoSkipTurn();
         }
 
         foreach (Piece piece in board.GetAllPieceLists().SelectMany(p => p))
         {
-
-            if (piece.PieceType == PieceType.Pawn)
+            if (piece.IsPawn)
             {
-                score += piece.IsWhite ? piece.Square.Rank : -piece.Square.Rank - 7;    // peso pedoni per rank
+                score += piece.IsWhite ? piece.Square.File : -7-piece.Square.File;
             }
-
+            
             int attackValue = BitboardHelper.GetNumberOfSetBits(
                 BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, piece.IsWhite));   // attacchi possibili pezzi
 
             score += attackValue * (piece.IsWhite ? 1 : -1);
-
-        }
-
-        if (board.TrySkipTurn())
-        {
-            score += (nlegalMoves > board.GetLegalMoves().Count()) ? 10 * turn : -10 * turn;    // maximize moves e minimizza moves nemico
-            board.UndoSkipTurn();
         }
 
         if (gameHistory.Count >= 3 && 
             gameHistory[^3].TargetSquare.Equals(gameHistory.Last().StartSquare) && 
             Math.Sign(score) == Math.Sign(turn))
         {
-            score -= 30 * turn;         // ripetizione se sei in vantaggio = male
+            score += -5 * turn;         // ripetizione se sei in vantaggio = male
         }
 
         seenPositions.TryAdd(board.ZobristKey, score);
         return score;
     }
 
-    private int MoveEval(Board board, Move move, bool isWhitetoMove)
+    private int MoveEval(Board board, Move lastmove, bool isWhitetoMove)
     {
         int turn = isWhitetoMove ? -1 : 1;
         int score = 0;
 
-        if (move.IsCastles)
+        if (board.HasKingsideCastleRight(isWhitetoMove) || board.HasQueensideCastleRight(isWhitetoMove))
         {
-            score += 100 * turn; // incentivo castle
+            score += turn; // incentivo castle
         }
         if (board.GameMoveHistory.Count() > 3 && 
-            board.GameMoveHistory[^3].TargetSquare.Equals(move.StartSquare)) // one move rule
+            board.GameMoveHistory[^3].TargetSquare.Equals(lastmove.StartSquare)) // one move rule
         {
-            score -= 50 * turn;
+            score += values[lastmove.MovePieceType]/100 * turn;
         }
 
         return score;

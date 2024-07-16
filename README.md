@@ -10,4 +10,4 @@ A small chess-playing bot using Alpha-Beta pruning and a custom evaluation funct
 - ~~Iterative Deepening~~
 
 ## Search scatter plot:
-![moves made/search time](Octobot/src/My%20Bot/graphs/scatterResponse5.png)
+![moves made/search time](OctoBot/src/My%20Bot/graphs/scatterResponse5.png)

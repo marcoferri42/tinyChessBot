@@ -9,5 +9,5 @@ A small chess-playing bot using Alpha-Beta pruning and a custom evaluation funct
 - Exchange when ahead
 - ~~Iterative Deepening~~
 
-## Current Search scatter plot:
-![image info](Octobot/src/My%20Bot/graphs/scatterResponse5.png)
+## Search scatter plot:
+![moves made/search time](Octobot/src/My%20Bot/graphs/scatterResponse5.png)
